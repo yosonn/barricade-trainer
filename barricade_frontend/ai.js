@@ -58,7 +58,7 @@ function other(side) {
 }
 
 function shouldFlipBoard() {
-  return mode === "topHuman" && humanSide === "red";
+  return false;
 }
 
 function coordToXY(coord) {
@@ -70,11 +70,10 @@ function xyToCoord(x, y) {
 }
 
 function visualXY(x, y) {
-  return shouldFlipBoard() ? { x: 8 - x, y: 8 - y } : { x, y };
+  return { x, y };
 }
 
 function actualXYFromVisual(col, displayRow) {
-  if (shouldFlipBoard()) return { x: 8 - col, y: displayRow };
   return { x: col, y: 8 - displayRow };
 }
 
@@ -269,11 +268,7 @@ function drawPawn(coord, color) {
 }
 
 function transformedWall(code) {
-  if (!shouldFlipBoard()) return code;
-  const orient = code[0];
-  const { x, y } = coordToXY(code.slice(1));
-  if (orient === "h") return `h${files[7 - x]}${9 - y}`;
-  return `v${files[7 - x]}${8 - y}`;
+  return code;
 }
 
 function drawWall(code, preview = false, extraClass = "") {
@@ -319,11 +314,7 @@ function clamp(value, min, max) {
 }
 
 function visualWallToActual(code) {
-  if (!shouldFlipBoard()) return code;
-  const orient = code[0];
-  const { x, y } = coordToXY(code.slice(1));
-  if (orient === "h") return `h${files[7 - x]}${9 - y}`;
-  return `v${files[7 - x]}${8 - y}`;
+  return code;
 }
 
 function wallFromPointer(event, orient) {
@@ -354,9 +345,10 @@ function setMode(nextMode) {
   modeHuman.classList.toggle("active", mode === "human");
   modeTopHuman.classList.toggle("active", mode === "topHuman");
   modeAuto.classList.toggle("active", mode === "auto");
-  playerFirst.disabled = mode === "auto";
-  computerFirst.disabled = mode === "auto";
+  if (mode === "topHuman") humanSide = "blue";
   if (mode === "auto") humanSide = "red";
+  playerFirst.disabled = mode === "auto" || mode === "topHuman";
+  computerFirst.disabled = mode === "auto";
   updateFirstButtons();
   if (latest) render(latest);
 }
@@ -364,6 +356,12 @@ function setMode(nextMode) {
 function setFirst(which) {
   stopAuto();
   lastComputerAction = null;
+  if (mode === "topHuman") {
+    humanSide = "blue";
+    updateFirstButtons();
+    analyze();
+    return;
+  }
   humanSide = which === "player" ? "red" : "blue";
   updateFirstButtons();
   analyze();

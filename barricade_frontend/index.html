@@ -1,0 +1,117 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Barricade 訓練器</title>
+    <link rel="stylesheet" href="/app.css">
+  </head>
+  <body>
+    <main class="app">
+      <section class="board-area">
+        <header class="top">
+          <div>
+            <h1>Barricade 訓練器</h1>
+            <p>離線練習 / 復盤分析</p>
+            <p><a class="top-link" href="/ai.html">開啟獨立 AI 對戰介面</a></p>
+          </div>
+          <div class="side-picker" role="group" aria-label="選擇陣營">
+            <button class="seg active" id="sideRed" type="button">我先手：紅方</button>
+            <button class="seg" id="sideBlue" type="button">我後手：藍方</button>
+          </div>
+        </header>
+
+        <div class="stats">
+          <div class="stat red-card">
+            <span>紅方</span>
+            <strong id="redPos">e1</strong>
+            <b id="redDist">8 步到終點</b>
+            <small id="redInfo">剩餘牆 10</small>
+          </div>
+          <div class="stat rec-card">
+            <span id="turnText">輪到紅方</span>
+            <strong id="recommendation">-</strong>
+            <small id="scoreText">等待分析</small>
+            <small id="winRateText">勝率估計：-</small>
+          </div>
+          <div class="stat blue-card">
+            <span>藍方</span>
+            <strong id="bluePos">e9</strong>
+            <b id="blueDist">8 步到終點</b>
+            <small id="blueInfo">剩餘牆 10</small>
+          </div>
+        </div>
+
+        <div class="board-shell">
+          <div class="board-rail">
+            <h2>拖曳放牆</h2>
+            <div class="drag-wall h-drag" draggable="true" data-wall="h">橫牆 h</div>
+            <div class="drag-wall v-drag" draggable="true" data-wall="v">直牆 v</div>
+            <p>拖到棋盤上會顯示預覽，放開後會同步寫入右側棋譜。</p>
+          </div>
+          <div class="board" id="board" aria-label="棋盤"></div>
+          <div class="board-rail">
+            <h2>推薦操作</h2>
+            <p id="boardRecHint">輪到你時，這裡會顯示推薦走法。</p>
+            <strong class="rail-code" id="boardRecCode">-</strong>
+            <button class="primary rail-primary" id="boardAcceptBtn" type="button">採用推薦</button>
+            <p>棋盤上會用淺色圖案預覽推薦位置；點格子仍可記錄實際走法。</p>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="status" id="statusText">載入中...</div>
+
+        <section class="box">
+          <h2>操作</h2>
+          <p id="flowHint">先採用推薦，接著輸入對手走法。</p>
+          <label class="field">
+            <span id="actionLabel">走法代碼</span>
+            <input id="actionInput" autocomplete="off" placeholder="e8 / hd5 / ve4">
+          </label>
+          <button class="primary" id="nextBtn" type="button">採用推薦</button>
+          <button id="editMineBtn" type="button">我不是走推薦</button>
+          <button id="undoBtn" type="button">上一步</button>
+        </section>
+
+        <details open>
+          <summary>棋譜與設定</summary>
+          <label class="field">
+            <span>整段棋譜</span>
+            <textarea id="history" spellcheck="false" placeholder="1. e2 e8 2. e3 e7 3. hd5"></textarea>
+          </label>
+          <div class="button-row">
+            <button id="analyzeBtn" type="button">重新分析</button>
+            <button id="resetBtn" type="button">重開</button>
+          </div>
+          <div class="settings-help">
+            <p><b>搜尋秒數</b>：每次推薦可以思考多久。越高通常越強，但會越慢。</p>
+            <p><b>最大深度</b>：往後預判幾層半手。越高通常越強，但會越慢。</p>
+          </div>
+          <div class="settings">
+            <label class="field">
+              <span>搜尋秒數</span>
+              <input id="timeLimit" type="number" min="0.05" max="3" step="0.05" value="0.5">
+            </label>
+            <label class="field">
+              <span>最大深度</span>
+              <input id="depthLimit" type="number" min="1" max="5" step="1" value="3">
+            </label>
+          </div>
+        </details>
+
+        <section class="box help-box">
+          <h2>代碼怎麼寫</h2>
+          <div class="code-grid">
+            <div><b>棋子</b><span>走到哪格就填哪格，例如 <code>e2</code></span></div>
+            <div><b>橫牆</b><span><code>h</code> + 左端錨點，例如 <code>hd5</code></span></div>
+            <div><b>直牆</b><span><code>v</code> + 下端錨點，例如 <code>ve4</code></span></div>
+          </div>
+          <p class="tiny">牆的錨點範圍是 a1 到 h8。棋盤上已放的牆會顯示代碼。</p>
+        </section>
+      </aside>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

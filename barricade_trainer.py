@@ -1,0 +1,415 @@
+from __future__ import annotations
+
+import argparse
+import math
+import re
+import time
+from collections import deque
+from dataclasses import dataclass, replace
+from functools import lru_cache
+from typing import Iterable
+
+
+BOARD = 9
+FILES = "abcdefghi"
+PLAYERS = ("red", "blue")
+START = {"red": (4, 0), "blue": (4, 8)}
+GOAL_ROW = {"red": 8, "blue": 0}
+FORWARD = {"red": 1, "blue": -1}
+
+Coord = tuple[int, int]
+Wall = tuple[str, int, int]
+
+
+def opponent(player: str) -> str:
+    return "blue" if player == "red" else "red"
+
+
+def coord_to_text(pos: Coord) -> str:
+    return f"{FILES[pos[0]]}{pos[1] + 1}"
+
+
+def text_to_coord(text: str) -> Coord:
+    if not re.fullmatch(r"[a-i][1-9]", text, flags=re.I):
+        raise ValueError(f"Bad square: {text}")
+    return FILES.index(text[0].lower()), int(text[1]) - 1
+
+
+def wall_to_text(wall: Wall) -> str:
+    orient, x, y = wall
+    return f"{orient}{FILES[x]}{y + 1}"
+
+
+def text_to_wall(text: str) -> Wall:
+    text = text.lower()
+    if re.fullmatch(r"[hv][a-h][1-8]", text):
+        orient, square = text[0], text[1:]
+    elif re.fullmatch(r"[a-h][1-8][hv]", text):
+        orient, square = text[-1], text[:-1]
+    else:
+        raise ValueError(f"Bad wall: {text}")
+    x, y = text_to_coord(square)
+    if x >= BOARD - 1 or y >= BOARD - 1:
+        raise ValueError(f"Wall anchor must be a1-h8: {text}")
+    return orient, x, y
+
+
+def blocked_edges_for(wall: Wall) -> frozenset[tuple[Coord, Coord]]:
+    orient, x, y = wall
+    if orient == "h":
+        edges = [((x, y), (x, y + 1)), ((x + 1, y), (x + 1, y + 1))]
+    else:
+        edges = [((x, y), (x + 1, y)), ((x, y + 1), (x + 1, y + 1))]
+    return frozenset(tuple(sorted(edge)) for edge in edges)
+
+
+@lru_cache(maxsize=200_000)
+def blocked_edges_for_walls(walls_key: tuple[Wall, ...]) -> frozenset[tuple[Coord, Coord]]:
+    edges: set[tuple[Coord, Coord]] = set()
+    for wall in walls_key:
+        edges.update(blocked_edges_for(wall))
+    return frozenset(edges)
+
+
+@dataclass(frozen=True)
+class State:
+    red: Coord = START["red"]
+    blue: Coord = START["blue"]
+    turn: str = "red"
+    red_walls: int = 10
+    blue_walls: int = 10
+    walls: frozenset[Wall] = frozenset()
+
+    @property
+    def blocked(self) -> frozenset[tuple[Coord, Coord]]:
+        return blocked_edges_for_walls(tuple(sorted(self.walls)))
+
+    def pawn(self, player: str) -> Coord:
+        return self.red if player == "red" else self.blue
+
+    def walls_left(self, player: str) -> int:
+        return self.red_walls if player == "red" else self.blue_walls
+
+    def key(self) -> tuple:
+        return (self.red, self.blue, self.turn, self.red_walls, self.blue_walls, tuple(sorted(self.walls)))
+
+
+def state_from_key(key: tuple) -> State:
+    return State(key[0], key[1], key[2], key[3], key[4], frozenset(key[5]))
+
+
+def in_bounds(pos: Coord) -> bool:
+    x, y = pos
+    return 0 <= x < BOARD and 0 <= y < BOARD
+
+
+def is_blocked(state: State, a: Coord, b: Coord) -> bool:
+    return tuple(sorted((a, b))) in state.blocked
+
+
+def basic_neighbors(state: State, pos: Coord) -> list[Coord]:
+    out = []
+    for dx, dy in ((0, 1), (1, 0), (0, -1), (-1, 0)):
+        nxt = (pos[0] + dx, pos[1] + dy)
+        if in_bounds(nxt) and not is_blocked(state, pos, nxt):
+            out.append(nxt)
+    return out
+
+
+def legal_pawn_moves(state: State, player: str | None = None) -> list[Coord]:
+    return list(legal_pawn_moves_cached(state.key(), player or state.turn))
+
+
+@lru_cache(maxsize=200_000)
+def legal_pawn_moves_cached(state_key: tuple, player: str) -> tuple[Coord, ...]:
+    state = state_from_key(state_key)
+    pos = state.pawn(player)
+    enemy = state.pawn(opponent(player))
+    moves: set[Coord] = set()
+    for nxt in basic_neighbors(state, pos):
+        if nxt != enemy:
+            moves.add(nxt)
+            continue
+
+        dx, dy = nxt[0] - pos[0], nxt[1] - pos[1]
+        behind = (nxt[0] + dx, nxt[1] + dy)
+        if in_bounds(behind) and not is_blocked(state, nxt, behind):
+            moves.add(behind)
+        else:
+            for sx, sy in ((-dy, dx), (dy, -dx)):
+                side = (nxt[0] + sx, nxt[1] + sy)
+                if in_bounds(side) and not is_blocked(state, nxt, side):
+                    moves.add(side)
+    ordered = sorted(moves, key=lambda p: (abs(p[0] - 4), -FORWARD[player] * p[1], p[0], p[1]))
+    return tuple(ordered)
+
+
+def shortest_path(state: State, player: str) -> tuple[int, list[Coord]]:
+    dist, path = shortest_path_cached(state.key(), player)
+    return dist, list(path)
+
+
+@lru_cache(maxsize=200_000)
+def shortest_path_cached(state_key: tuple, player: str) -> tuple[int, tuple[Coord, ...]]:
+    state = state_from_key(state_key)
+    start = state.pawn(player)
+    goal = GOAL_ROW[player]
+    q = deque([start])
+    parent: dict[Coord, Coord | None] = {start: None}
+    while q:
+        pos = q.popleft()
+        if pos[1] == goal:
+            path = []
+            cur: Coord | None = pos
+            while cur is not None:
+                path.append(cur)
+                cur = parent[cur]
+            path.reverse()
+            return len(path) - 1, tuple(path)
+        for nxt in basic_neighbors(state, pos):
+            if nxt not in parent:
+                parent[nxt] = pos
+                q.append(nxt)
+    return math.inf, tuple()
+
+
+def wall_conflicts(existing: Wall, candidate: Wall) -> bool:
+    if existing == candidate:
+        return True
+    if blocked_edges_for(existing) & blocked_edges_for(candidate):
+        return True
+    return existing[1:] == candidate[1:]
+
+
+def can_place_wall(state: State, wall: Wall) -> bool:
+    if state.walls_left(state.turn) <= 0:
+        return False
+    if any(wall_conflicts(w, wall) for w in state.walls):
+        return False
+    trial = replace(state, walls=state.walls | {wall})
+    return shortest_path(trial, "red")[0] < math.inf and shortest_path(trial, "blue")[0] < math.inf
+
+
+def all_wall_slots() -> Iterable[Wall]:
+    for orient in ("h", "v"):
+        for x in range(BOARD - 1):
+            for y in range(BOARD - 1):
+                yield orient, x, y
+
+
+def legal_walls(state: State, focused: bool = True) -> list[Wall]:
+    slots: Iterable[Wall] = all_wall_slots()
+    if focused:
+        candidates: set[Wall] = set()
+        for player in PLAYERS:
+            _, path = shortest_path(state, player)
+            for a, b in zip(path, path[1:]):
+                ax, ay = a
+                bx, by = b
+                if ax == bx:
+                    y = min(ay, by)
+                    for x in (ax - 1, ax):
+                        if 0 <= x < BOARD - 1 and 0 <= y < BOARD - 1:
+                            candidates.add(("h", x, y))
+                else:
+                    x = min(ax, bx)
+                    for y in (ay - 1, ay):
+                        if 0 <= x < BOARD - 1 and 0 <= y < BOARD - 1:
+                            candidates.add(("v", x, y))
+        slots = candidates
+    return [wall for wall in slots if can_place_wall(state, wall)]
+
+
+def apply_action(state: State, action: str) -> State:
+    action = action.lower()
+    next_turn = opponent(state.turn)
+    if re.fullmatch(r"[a-i][1-9]", action):
+        dest = text_to_coord(action)
+        if dest not in legal_pawn_moves(state):
+            raise ValueError(f"Illegal pawn move for {state.turn}: {action}")
+        kwargs = {state.turn: dest, "turn": next_turn}
+        return replace(state, **kwargs)
+
+    wall = text_to_wall(action)
+    if not can_place_wall(state, wall):
+        raise ValueError(f"Illegal wall for {state.turn}: {action}")
+    kwargs = {
+        "walls": state.walls | {wall},
+        "turn": next_turn,
+        f"{state.turn}_walls": state.walls_left(state.turn) - 1,
+    }
+    return replace(state, **kwargs)
+
+
+def tokenize_history(history: str) -> list[str]:
+    cleaned = re.sub(r"\d+\.", " ", history)
+    return re.findall(r"[hv]?[a-i][1-9][hv]?", cleaned, flags=re.I)
+
+
+def state_from_history(history: str) -> State:
+    state = State()
+    for token in tokenize_history(history):
+        state = apply_action(state, token)
+    return state
+
+
+def static_eval(state: State, perspective: str) -> float:
+    me = perspective
+    them = opponent(me)
+    my_dist, _ = shortest_path(state, me)
+    their_dist, _ = shortest_path(state, them)
+    if state.pawn(me)[1] == GOAL_ROW[me]:
+        return 100000
+    if state.pawn(them)[1] == GOAL_ROW[them]:
+        return -100000
+
+    my_walls = state.walls_left(me)
+    their_walls = state.walls_left(them)
+    path_score = (their_dist - my_dist) * 100
+    progress = (state.pawn(me)[1] * FORWARD[me] - state.pawn(them)[1] * FORWARD[them]) * 2
+
+    # Walls are most valuable before the final sprint, and especially when
+    # the opponent is not already far behind.
+    race_tension = max(0, 8 - abs(their_dist - my_dist))
+    wall_value = 4 + race_tension
+    wall_score = (my_walls - their_walls) * wall_value
+
+    reserve_score = 0
+    if my_walls == 0 and my_dist >= their_dist:
+        reserve_score -= 35
+    if their_walls == 0 and their_dist <= my_dist + 2:
+        reserve_score += 20
+    if my_walls >= 2 and their_dist < my_dist:
+        reserve_score += 10
+    if my_dist <= 2:
+        reserve_score -= my_walls * 2
+
+    return path_score + wall_score + reserve_score + progress
+
+
+def action_score(state: State, action: str, perspective: str) -> float:
+    child = apply_action(state, action)
+    if child.pawn(perspective)[1] == GOAL_ROW[perspective]:
+        return 1_000_000
+    if child.pawn(opponent(perspective))[1] == GOAL_ROW[opponent(perspective)]:
+        return -1_000_000
+    return static_eval(child, perspective)
+
+
+def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
+    perspective = state.turn
+    moves = [coord_to_text(pos) for pos in legal_pawn_moves(state)]
+    moves.sort(key=lambda action: action_score(state, action, perspective), reverse=True)
+
+    wall_scores = []
+    my_dist, _ = shortest_path(state, state.turn)
+    opp = opponent(state.turn)
+    opp_dist, _ = shortest_path(state, opp)
+    for wall in legal_walls(state, focused=True):
+        trial = apply_action(state, wall_to_text(wall))
+        new_my = shortest_path(trial, state.turn)[0]
+        new_opp = shortest_path(trial, opp)[0]
+        gain = (new_opp - opp_dist) * 120 - (new_my - my_dist) * 90
+        gain += static_eval(trial, state.turn) * 0.02
+        if state.walls_left(state.turn) <= 2 and new_opp - opp_dist < 2:
+            gain -= 80
+        if opp_dist <= my_dist + 1 and new_opp > opp_dist:
+            gain += 45
+        if my_dist <= 2:
+            gain -= 120
+        wall_scores.append((gain, wall_to_text(wall)))
+    wall_scores.sort(reverse=True)
+    return moves + [w for _, w in wall_scores[:limit_walls]]
+
+
+def search_best(state: State, time_limit: float = 1.0, max_depth: int = 4) -> tuple[str, float, int]:
+    deadline = time.perf_counter() + time_limit
+    perspective = state.turn
+    root_actions = ordered_actions(state, limit_walls=12)
+    winning_moves = [
+        action for action in root_actions
+        if re.fullmatch(r"[a-i][1-9]", action)
+        and text_to_coord(action)[1] == GOAL_ROW[perspective]
+    ]
+    if winning_moves:
+        return winning_moves[0], 100000, 0
+
+    best_action = root_actions[0]
+    best_score = static_eval(apply_action(state, best_action), perspective)
+    reached_depth = 0
+
+    transposition: dict[tuple[tuple, int], float] = {}
+
+    def negamax(key: tuple, depth: int, alpha: float, beta: float) -> float:
+        if time.perf_counter() >= deadline:
+            raise TimeoutError
+        cache_key = (key, depth)
+        if cache_key in transposition:
+            return transposition[cache_key]
+
+        cur = state_from_key(key)
+        if depth == 0 or cur.red[1] == GOAL_ROW["red"] or cur.blue[1] == GOAL_ROW["blue"]:
+            sign = 1 if cur.turn == perspective else -1
+            value = sign * static_eval(cur, perspective)
+            transposition[cache_key] = value
+            return value
+        value = -math.inf
+        cut = False
+        for action in ordered_actions(cur):
+            child = apply_action(cur, action)
+            value = max(value, -negamax(child.key(), depth - 1, -beta, -alpha))
+            alpha = max(alpha, value)
+            if alpha >= beta:
+                cut = True
+                break
+        if not cut:
+            transposition[cache_key] = value
+        return value
+
+    try:
+        for depth in range(1, max_depth + 1):
+            local_best, local_score = best_action, -math.inf
+            alpha = -math.inf
+            for action in root_actions:
+                child = apply_action(state, action)
+                score = -negamax(child.key(), depth - 1, -math.inf, -alpha)
+                if score > local_score:
+                    local_best, local_score = action, score
+                alpha = max(alpha, local_score)
+                if time.perf_counter() >= deadline:
+                    raise TimeoutError
+            best_action, best_score = local_best, local_score
+            reached_depth = depth
+    except TimeoutError:
+        pass
+    return best_action, best_score, reached_depth
+
+
+def describe_state(state: State) -> str:
+    red_dist, red_path = shortest_path(state, "red")
+    blue_dist, blue_path = shortest_path(state, "blue")
+    lines = [
+        f"turn: {state.turn}",
+        f"red:  {coord_to_text(state.red)} walls={state.red_walls} dist={red_dist} path={' '.join(map(coord_to_text, red_path))}",
+        f"blue: {coord_to_text(state.blue)} walls={state.blue_walls} dist={blue_dist} path={' '.join(map(coord_to_text, blue_path))}",
+        f"walls: {' '.join(wall_to_text(w) for w in sorted(state.walls)) or '-'}",
+    ]
+    return "\n".join(lines)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Offline Barricade/Quoridor training analyzer.")
+    parser.add_argument("--history", default="", help='Move list, e.g. "1. e2 e8 2. e3 e7 3. hd5"')
+    parser.add_argument("--time", type=float, default=1.0, help="Search seconds.")
+    parser.add_argument("--depth", type=int, default=4, help="Maximum search depth.")
+    args = parser.parse_args()
+
+    state = state_from_history(args.history)
+    best, score, depth = search_best(state, time_limit=args.time, max_depth=args.depth)
+    print(describe_state(state))
+    print(f"recommendation_for_training: {best}")
+    print(f"score={score:.1f} searched_depth={depth}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: barricade-trainer
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python barricade_web.py

@@ -18,6 +18,8 @@ GOAL_ROW = {"red": 8, "blue": 0}
 FORWARD = {"red": 1, "blue": -1}
 ROOT_ACTION_LIMIT = 24
 SEARCH_ACTION_LIMIT = 18
+QUIESCENCE_ACTION_LIMIT = 10
+QUIESCENCE_EXTENSION_LIMIT = 1
 
 Coord = tuple[int, int]
 Wall = tuple[str, int, int]
@@ -406,16 +408,57 @@ def search_best(state: State, time_limit: float = 1.0, max_depth: int = 4) -> tu
     best_score = static_eval(apply_action(state, best_action), perspective)
     reached_depth = 0
 
-    transposition: dict[tuple[tuple, int], float] = {}
+    transposition: dict[tuple[tuple, int, int], float] = {}
+    history_scores: dict[str, int] = {}
+    killer_moves: dict[int, list[str]] = {}
 
-    def negamax(key: tuple, depth: int, alpha: float, beta: float) -> float:
+    def tactical_position(cur: State) -> bool:
+        if cur.red[1] == GOAL_ROW["red"] or cur.blue[1] == GOAL_ROW["blue"]:
+            return False
+        cur_dist, _ = shortest_path(cur, cur.turn)
+        opp_dist, _ = shortest_path(cur, opponent(cur.turn))
+        return (
+            cur_dist <= 2
+            or opp_dist <= 2
+            or player_has_goal_move(cur, cur.turn)
+            or player_has_goal_move(cur, opponent(cur.turn))
+        )
+
+    def remember_cutoff(action: str, depth: int, ply: int) -> None:
+        history_scores[action] = history_scores.get(action, 0) + depth * depth
+        killers = killer_moves.setdefault(ply, [])
+        if action not in killers:
+            killers.insert(0, action)
+            del killers[2:]
+
+    def ranked_actions(cur: State, ply: int, limit_walls: int, limit: int) -> list[str]:
+        actions = ordered_actions(cur, limit_walls=limit_walls)
+        killers = killer_moves.get(ply, [])
+
+        def priority(action: str) -> int:
+            killer_bonus = 50_000 if action in killers else 0
+            return killer_bonus + history_scores.get(action, 0)
+
+        actions.sort(key=priority, reverse=True)
+        return actions[:limit]
+
+    def negamax(key: tuple, depth: int, alpha: float, beta: float, ply: int = 0, q_depth: int = 0) -> float:
         if time.perf_counter() >= deadline:
             raise TimeoutError
-        cache_key = (key, depth)
+
+        cur = state_from_key(key)
+        action_limit = SEARCH_ACTION_LIMIT
+        wall_limit = 10
+        if depth == 0 and tactical_position(cur) and q_depth < QUIESCENCE_EXTENSION_LIMIT:
+            depth = 1
+            q_depth += 1
+            action_limit = QUIESCENCE_ACTION_LIMIT
+            wall_limit = 8
+
+        cache_key = (key, depth, q_depth)
         if cache_key in transposition:
             return transposition[cache_key]
 
-        cur = state_from_key(key)
         if depth == 0 or cur.red[1] == GOAL_ROW["red"] or cur.blue[1] == GOAL_ROW["blue"]:
             sign = 1 if cur.turn == perspective else -1
             value = sign * static_eval(cur, perspective)
@@ -423,12 +466,13 @@ def search_best(state: State, time_limit: float = 1.0, max_depth: int = 4) -> tu
             return value
         value = -math.inf
         cut = False
-        for action in ordered_actions(cur, limit_walls=10)[:SEARCH_ACTION_LIMIT]:
+        for action in ranked_actions(cur, ply, wall_limit, action_limit):
             child = apply_action(cur, action)
-            value = max(value, -negamax(child.key(), depth - 1, -beta, -alpha))
+            value = max(value, -negamax(child.key(), depth - 1, -beta, -alpha, ply + 1, q_depth))
             alpha = max(alpha, value)
             if alpha >= beta:
                 cut = True
+                remember_cutoff(action, depth, ply)
                 break
         if not cut:
             transposition[cache_key] = value
@@ -440,7 +484,7 @@ def search_best(state: State, time_limit: float = 1.0, max_depth: int = 4) -> tu
             alpha = -math.inf
             for action in root_actions:
                 child = apply_action(state, action)
-                score = -negamax(child.key(), depth - 1, -math.inf, -alpha)
+                score = -negamax(child.key(), depth - 1, -math.inf, -alpha, 1)
                 if score > local_score:
                     local_best, local_score = action, score
                 alpha = max(alpha, local_score)

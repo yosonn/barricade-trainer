@@ -16,6 +16,8 @@ PLAYERS = ("red", "blue")
 START = {"red": (4, 0), "blue": (4, 8)}
 GOAL_ROW = {"red": 8, "blue": 0}
 FORWARD = {"red": 1, "blue": -1}
+ROOT_ACTION_LIMIT = 24
+SEARCH_ACTION_LIMIT = 18
 
 Coord = tuple[int, int]
 Wall = tuple[str, int, int]
@@ -255,6 +257,14 @@ def state_from_history(history: str, start_turn: str = "red") -> State:
     return state
 
 
+def is_pawn_action(action: str) -> bool:
+    return re.fullmatch(r"[a-i][1-9]", action) is not None
+
+
+def player_has_goal_move(state: State, player: str) -> bool:
+    return any(move[1] == GOAL_ROW[player] for move in legal_pawn_moves(state, player))
+
+
 def static_eval(state: State, perspective: str) -> float:
     me = perspective
     them = opponent(me)
@@ -286,7 +296,21 @@ def static_eval(state: State, perspective: str) -> float:
     if my_dist <= 2:
         reserve_score -= my_walls * 2
 
-    return path_score + wall_score + reserve_score + progress
+    tempo_score = 0
+    if my_dist <= 1:
+        tempo_score += 1200
+    if their_dist <= 1:
+        tempo_score -= 1400
+    elif their_dist <= 2 and my_walls == 0:
+        tempo_score -= 260
+    if player_has_goal_move(state, me):
+        tempo_score += 600
+    if player_has_goal_move(state, them):
+        tempo_score -= 700
+
+    mobility_score = (len(legal_pawn_moves(state, me)) - len(legal_pawn_moves(state, them))) * 5
+
+    return path_score + wall_score + reserve_score + progress + tempo_score + mobility_score
 
 
 def action_score(state: State, action: str, perspective: str) -> float:
@@ -295,44 +319,71 @@ def action_score(state: State, action: str, perspective: str) -> float:
         return 1_000_000
     if child.pawn(opponent(perspective))[1] == GOAL_ROW[opponent(perspective)]:
         return -1_000_000
+    if child.turn == opponent(perspective) and player_has_goal_move(child, opponent(perspective)):
+        return -75_000
     return static_eval(child, perspective)
 
 
 def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
     perspective = state.turn
-    moves = [coord_to_text(pos) for pos in legal_pawn_moves(state)]
-    moves.sort(key=lambda action: action_score(state, action, perspective), reverse=True)
-
-    wall_scores = []
+    scored_actions: list[tuple[float, str]] = []
     my_dist, _ = shortest_path(state, state.turn)
+    _, my_path = shortest_path(state, state.turn)
     opp = opponent(state.turn)
     opp_dist, _ = shortest_path(state, opp)
+
+    for pos in legal_pawn_moves(state):
+        action = coord_to_text(pos)
+        trial = apply_action(state, action)
+        new_my = shortest_path(trial, state.turn)[0]
+        score = action_score(state, action, perspective)
+        score += (my_dist - new_my) * 90
+        if len(my_path) > 1 and pos == my_path[1]:
+            score += 80
+        if opp_dist <= 1 and pos[1] != GOAL_ROW[perspective]:
+            score -= 1800
+        scored_actions.append((score, action))
+
+    wall_scores: list[tuple[float, str]] = []
     for wall in legal_walls(state, focused=True):
-        trial = apply_action(state, wall_to_text(wall))
+        action = wall_to_text(wall)
+        trial = apply_action(state, action)
         new_my = shortest_path(trial, state.turn)[0]
         new_opp = shortest_path(trial, opp)[0]
-        gain = (new_opp - opp_dist) * 120 - (new_my - my_dist) * 90
+        opp_delay = new_opp - opp_dist
+        self_delay = new_my - my_dist
+        gain = opp_delay * 150 - self_delay * 120
         gain += static_eval(trial, state.turn) * 0.02
-        if opp_dist <= 1 and new_opp > opp_dist:
-            gain += 2200 + (new_opp - opp_dist) * 350
-        if state.walls_left(state.turn) <= 2 and new_opp - opp_dist < 2:
-            gain -= 80
-        if opp_dist <= my_dist + 1 and new_opp > opp_dist:
-            gain += 45
-        if my_dist <= 2:
+        if opp_delay <= 0:
             gain -= 120
-        wall_scores.append((gain, wall_to_text(wall)))
+        if opp_dist <= 1 and opp_delay > 0:
+            gain += 2600 + opp_delay * 450
+        elif opp_dist <= 2 and opp_delay > 0:
+            gain += 650 + opp_delay * 220
+        if new_opp <= 1:
+            gain -= 900
+        if self_delay >= 2:
+            gain -= self_delay * 170
+        if state.walls_left(state.turn) <= 2 and opp_delay < 2:
+            gain -= 80
+        if opp_dist <= my_dist + 1 and opp_delay > 0:
+            gain += 45
+        if my_dist <= 2 and my_dist < opp_dist:
+            gain -= 120
+        wall_scores.append((gain, action))
     wall_scores.sort(reverse=True)
-    return moves + [w for _, w in wall_scores[:limit_walls]]
+    scored_actions.extend(wall_scores[:limit_walls])
+    scored_actions.sort(reverse=True)
+    return [action for _, action in scored_actions]
 
 
 def search_best(state: State, time_limit: float = 1.0, max_depth: int = 4) -> tuple[str, float, int]:
     deadline = time.perf_counter() + time_limit
     perspective = state.turn
-    root_actions = ordered_actions(state, limit_walls=12)
+    root_actions = ordered_actions(state, limit_walls=16)[:ROOT_ACTION_LIMIT]
     winning_moves = [
         action for action in root_actions
-        if re.fullmatch(r"[a-i][1-9]", action)
+        if is_pawn_action(action)
         and text_to_coord(action)[1] == GOAL_ROW[perspective]
     ]
     if winning_moves:
@@ -372,7 +423,7 @@ def search_best(state: State, time_limit: float = 1.0, max_depth: int = 4) -> tu
             return value
         value = -math.inf
         cut = False
-        for action in ordered_actions(cur):
+        for action in ordered_actions(cur, limit_walls=10)[:SEARCH_ACTION_LIMIT]:
             child = apply_action(cur, action)
             value = max(value, -negamax(child.key(), depth - 1, -beta, -alpha))
             alpha = max(alpha, value)

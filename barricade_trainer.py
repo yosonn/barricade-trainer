@@ -337,6 +337,38 @@ def path_control_score(state: State, player: str) -> float:
     return score
 
 
+def wall_resource_adjustment(state: State, action: str, perspective: str) -> float:
+    if is_pawn_action(action):
+        return 0.0
+    child = apply_action(state, action)
+    opp = opponent(perspective)
+    my_dist, _ = movement_path(state, perspective)
+    opp_dist, _ = movement_path(state, opp)
+    new_my_dist, _ = movement_path(child, perspective)
+    new_opp_dist, _ = movement_path(child, opp)
+    my_walls = state.walls_left(perspective)
+    opp_walls = state.walls_left(opp)
+    opp_delay = new_opp_dist - opp_dist
+    self_delay = new_my_dist - my_dist
+    score = 0.0
+
+    if my_walls <= 2 and my_dist <= opp_dist:
+        score -= 180
+    if my_walls <= 2 and opp_delay <= 0:
+        score -= 260
+    if my_walls <= 1 and opp_delay < 2:
+        score -= 360
+    if opp_walls - my_walls >= 4 and opp_delay <= 1:
+        score -= (opp_walls - my_walls) * 45
+    if my_dist <= 3 and opp_dist >= my_dist + 3 and opp_delay < 2:
+        score -= 220
+    if self_delay > 0:
+        score -= self_delay * 120
+    if opp_delay >= 2:
+        score += opp_delay * 160
+    return score
+
+
 def immediate_reply_adjustment(state: State, action: str, perspective: str) -> float:
     if not is_pawn_action(action):
         return 0
@@ -460,6 +492,7 @@ def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
         self_delay = new_my - my_dist
         gain = opp_delay * 150 - self_delay * 120
         gain += static_eval(trial, state.turn) * 0.02
+        gain += wall_resource_adjustment(state, action, state.turn)
         if opp_delay <= 0:
             gain -= 120
         if opp_dist <= 1 and opp_delay > 0:
@@ -558,6 +591,7 @@ def search_best(
 
     def root_adjusted_score(action: str, score: float) -> float:
         score += immediate_reply_adjustment(state, action, perspective)
+        score += wall_resource_adjustment(state, action, perspective)
         if action in avoid_actions and not improves_root_path(action) and not tactically_justified_reposition(action):
             return score - 900
         return score

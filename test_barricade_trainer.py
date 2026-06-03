@@ -116,6 +116,24 @@ class BarricadeTrainerTests(unittest.TestCase):
         best, _, _ = b.search_best(state, time_limit=0.2, max_depth=2, avoid_actions=avoid)
         self.assertEqual(best, "c4")
 
+    def test_blue_preserves_last_walls_when_race_is_winning(self):
+        history = (
+            "e2 e8 e3 e7 e4 e6 e5 he8 e7 hd7 f7 e5 g7 hg7 "
+            "f7 e4 f8 vf8 e8 vd8 f8 f4 f7 vf6 hd6 ve6 f6 g4 f5 hh8 g5"
+        )
+        state = b.state_from_history(history)
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=3)
+        self.assertEqual(best, "g3")
+
+    def test_blue_endgame_tempo_does_not_step_back_from_goal_lane(self):
+        history = (
+            "e2 e8 e3 e7 e4 e6 e5 he8 e7 hd7 d7 vc7 hc5 e5 vb6 e4 "
+            "vd6 hb8 ha7 e3 d6 e2 hd1 f2 hf1"
+        )
+        state = b.state_from_history(history)
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=3)
+        self.assertNotEqual(best, "f3")
+
 
 if __name__ == "__main__":
     unittest.main()

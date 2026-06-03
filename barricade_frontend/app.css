@@ -94,6 +94,14 @@ small,
   color: #a9b2ba;
 }
 
+.app-version {
+  display: inline-block;
+  margin-top: 4px;
+  color: #f3d879;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .side-picker,
 .button-row,
 .settings {

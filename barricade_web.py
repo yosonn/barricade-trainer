@@ -12,6 +12,7 @@ import barricade_trainer as engine
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
+APP_VERSION = "2026.06.03.02"
 
 
 def win_rate_from_score(score: float) -> float:
@@ -63,6 +64,7 @@ def state_payload(
         )
 
     return {
+        "app_version": APP_VERSION,
         "turn": state.turn,
         "start_turn": start_turn,
         "user_side": user_side,

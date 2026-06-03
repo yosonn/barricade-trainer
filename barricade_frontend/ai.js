@@ -35,6 +35,8 @@ let replayTimer = null;
 let replayIndex = null;
 let previewWall = "";
 let lastComputerAction = null;
+let autoBusy = false;
+let replayBusy = false;
 
 const t = {
   red: "\u7d05\u65b9",
@@ -408,6 +410,7 @@ async function aiStep() {
 function stopAuto() {
   if (autoTimer) clearInterval(autoTimer);
   autoTimer = null;
+  autoBusy = false;
   autoBtn.textContent = "\u958b\u59cb\u81ea\u52d5\u5c0d\u6230";
 }
 
@@ -420,12 +423,18 @@ function toggleAuto() {
   replayIndex = null;
   autoBtn.textContent = "\u66ab\u505c\u81ea\u52d5\u5c0d\u6230";
   autoTimer = setInterval(async () => {
+    if (autoBusy) return;
     if (!latest || latest.winner) {
       stopAuto();
       return;
     }
     if (hasHumanPlayer() && latest.turn === humanSide) return;
-    await aiStep();
+    autoBusy = true;
+    try {
+      await aiStep();
+    } finally {
+      autoBusy = false;
+    }
   }, 650);
 }
 
@@ -453,6 +462,7 @@ function undoLastMove() {
 function stopReplay() {
   if (replayTimer) clearInterval(replayTimer);
   replayTimer = null;
+  replayBusy = false;
   replayPlayBtn.textContent = "\u64ad\u653e";
 }
 
@@ -483,11 +493,17 @@ function toggleReplay() {
   if (replayIndex === null) replayIndex = 0;
   replayPlayBtn.textContent = "\u66ab\u505c";
   replayTimer = setInterval(async () => {
+    if (replayBusy) return;
     if (replayIndex >= tokens.length) {
       stopReplay();
       return;
     }
-    await renderReplay(replayIndex + 1);
+    replayBusy = true;
+    try {
+      await renderReplay(replayIndex + 1);
+    } finally {
+      replayBusy = false;
+    }
   }, 700);
 }
 

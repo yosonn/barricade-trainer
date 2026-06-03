@@ -74,7 +74,7 @@ function visualXY(x, y) {
   return { x, y };
 }
 
-function actualXYFromVisual(col, displayRow) {
+function boardXYFromDisplayCell(col, displayRow) {
   return { x: col, y: 8 - displayRow };
 }
 
@@ -237,9 +237,10 @@ function drawBoard(state) {
   boardEl.innerHTML = "";
   for (let displayRow = 0; displayRow < 9; displayRow += 1) {
     for (let col = 0; col < 9; col += 1) {
-      const actual = actualXYFromVisual(col, displayRow);
+      const actual = boardXYFromDisplayCell(col, displayRow);
       const cell = document.createElement("div");
       cell.className = "cell";
+      cell.dataset.coord = xyToCoord(actual.x, actual.y);
       if (actual.y === 8) cell.classList.add("goal-red");
       if (actual.y === 0) cell.classList.add("goal-blue");
       if (col === 0 || displayRow === 8) {
@@ -323,12 +324,16 @@ function drawWall(code, preview = false, extraClass = "") {
 }
 
 function squareFromPointer(event) {
+  const cellEl = event.target.closest(".cell");
+  if (cellEl && boardEl.contains(cellEl) && cellEl.dataset.coord) {
+    return cellEl.dataset.coord;
+  }
   const rect = boardEl.getBoundingClientRect();
   const cell = rect.width / 9;
   const col = Math.floor((event.clientX - rect.left) / cell);
   const displayRow = Math.floor((event.clientY - rect.top) / cell);
   if (col < 0 || col > 8 || displayRow < 0 || displayRow > 8) return "";
-  const actual = actualXYFromVisual(col, displayRow);
+  const actual = boardXYFromDisplayCell(col, displayRow);
   return xyToCoord(actual.x, actual.y);
 }
 

@@ -12,7 +12,7 @@ import barricade_trainer as engine
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
-APP_VERSION = "2026.06.03.06"
+APP_VERSION = "2026.06.03.07"
 
 
 def win_rate_from_score(score: float) -> float:
@@ -45,8 +45,8 @@ def state_payload(
     start_turn: str = "red",
     avoid_actions: set[str] | None = None,
 ) -> dict:
-    red_dist, red_path = engine.shortest_path(state, "red")
-    blue_dist, blue_path = engine.shortest_path(state, "blue")
+    red_dist, red_path = engine.movement_path(state, "red")
+    blue_dist, blue_path = engine.movement_path(state, "blue")
     actions = engine.ordered_actions(state, limit_walls=18)
     win = winner(state)
     red_score = engine.static_eval(state, "red")

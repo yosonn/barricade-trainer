@@ -61,6 +61,16 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertRegex(best, r"^[hv][a-h][1-8]$")
         self.assertGreater(b.shortest_path(child, "blue")[0], 1)
 
+    def test_movement_path_counts_jump_threats(self):
+        state = b.state_from_history("e2 e8 e3 e7 e4 e6 e5")
+        self.assertEqual(b.shortest_path(state, "blue")[0], 5)
+        self.assertEqual(b.movement_path(state, "blue")[0], 4)
+
+    def test_opening_avoids_feeding_opponent_jump(self):
+        state = b.state_from_history("e2 e8 e3 e7 e4 e6")
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=3)
+        self.assertNotEqual(best, "e5")
+
     def test_recent_reversal_avoid_action_from_history(self):
         avoid = web.recent_reversal_avoid_actions("e2 e8 e3 e7 e4 e6", "red")
         self.assertEqual(avoid, {"e1", "e2", "e3"})

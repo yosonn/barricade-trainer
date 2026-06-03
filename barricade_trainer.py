@@ -124,10 +124,7 @@ def legal_pawn_moves(state: State, player: str | None = None) -> list[Coord]:
     return list(legal_pawn_moves_cached(state.key(), player or state.turn))
 
 
-@lru_cache(maxsize=200_000)
-def legal_pawn_moves_cached(state_key: tuple, player: str) -> tuple[Coord, ...]:
-    state = state_from_key(state_key)
-    pos = state.pawn(player)
+def legal_pawn_moves_from(state: State, player: str, pos: Coord) -> tuple[Coord, ...]:
     enemy = state.pawn(opponent(player))
     moves: set[Coord] = set()
     for nxt in basic_neighbors(state, pos):
@@ -148,9 +145,44 @@ def legal_pawn_moves_cached(state_key: tuple, player: str) -> tuple[Coord, ...]:
     return tuple(ordered)
 
 
+@lru_cache(maxsize=200_000)
+def legal_pawn_moves_cached(state_key: tuple, player: str) -> tuple[Coord, ...]:
+    state = state_from_key(state_key)
+    return legal_pawn_moves_from(state, player, state.pawn(player))
+
+
 def shortest_path(state: State, player: str) -> tuple[int, list[Coord]]:
     dist, path = shortest_path_cached(state.key(), player)
     return dist, list(path)
+
+
+def movement_path(state: State, player: str) -> tuple[int, list[Coord]]:
+    dist, path = movement_path_cached(state.key(), player)
+    return dist, list(path)
+
+
+@lru_cache(maxsize=200_000)
+def movement_path_cached(state_key: tuple, player: str) -> tuple[int, tuple[Coord, ...]]:
+    state = state_from_key(state_key)
+    start = state.pawn(player)
+    goal = GOAL_ROW[player]
+    q = deque([start])
+    parent: dict[Coord, Coord | None] = {start: None}
+    while q:
+        pos = q.popleft()
+        if pos[1] == goal:
+            path = []
+            cur: Coord | None = pos
+            while cur is not None:
+                path.append(cur)
+                cur = parent[cur]
+            path.reverse()
+            return len(path) - 1, tuple(path)
+        for nxt in legal_pawn_moves_from(state, player, pos):
+            if nxt not in parent:
+                parent[nxt] = pos
+                q.append(nxt)
+    return math.inf, tuple()
 
 
 @lru_cache(maxsize=200_000)
@@ -267,11 +299,26 @@ def player_has_goal_move(state: State, player: str) -> bool:
     return any(move[1] == GOAL_ROW[player] for move in legal_pawn_moves(state, player))
 
 
+def immediate_reply_adjustment(state: State, action: str, perspective: str) -> float:
+    if not is_pawn_action(action):
+        return 0
+    child = apply_action(state, action)
+    opp = opponent(perspective)
+    score = 0.0
+
+    old_pos = state.pawn(perspective)
+    pos = text_to_coord(action)
+    enemy = state.pawn(opp)
+    if abs(pos[0] - enemy[0]) + abs(pos[1] - enemy[1]) == 1 and old_pos in legal_pawn_moves(child, opp):
+        score -= 260
+    return score
+
+
 def static_eval(state: State, perspective: str) -> float:
     me = perspective
     them = opponent(me)
-    my_dist, _ = shortest_path(state, me)
-    their_dist, _ = shortest_path(state, them)
+    my_dist, _ = movement_path(state, me)
+    their_dist, _ = movement_path(state, them)
     if state.pawn(me)[1] == GOAL_ROW[me]:
         return 100000
     if state.pawn(them)[1] == GOAL_ROW[them]:
@@ -329,17 +376,18 @@ def action_score(state: State, action: str, perspective: str) -> float:
 def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
     perspective = state.turn
     scored_actions: list[tuple[float, str]] = []
-    my_dist, _ = shortest_path(state, state.turn)
-    _, my_path = shortest_path(state, state.turn)
+    my_dist, _ = movement_path(state, state.turn)
+    _, my_path = movement_path(state, state.turn)
     opp = opponent(state.turn)
-    opp_dist, _ = shortest_path(state, opp)
+    opp_dist, _ = movement_path(state, opp)
 
     for pos in legal_pawn_moves(state):
         action = coord_to_text(pos)
         trial = apply_action(state, action)
-        new_my = shortest_path(trial, state.turn)[0]
+        new_my = movement_path(trial, state.turn)[0]
         score = action_score(state, action, perspective)
         score += (my_dist - new_my) * 90
+        score += immediate_reply_adjustment(state, action, perspective)
         if len(my_path) > 1 and pos == my_path[1]:
             score += 80
         if opp_dist <= 1 and pos[1] != GOAL_ROW[perspective]:
@@ -350,8 +398,8 @@ def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
     for wall in legal_walls(state, focused=True):
         action = wall_to_text(wall)
         trial = apply_action(state, action)
-        new_my = shortest_path(trial, state.turn)[0]
-        new_opp = shortest_path(trial, opp)[0]
+        new_my = movement_path(trial, state.turn)[0]
+        new_opp = movement_path(trial, opp)[0]
         opp_delay = new_opp - opp_dist
         self_delay = new_my - my_dist
         gain = opp_delay * 150 - self_delay * 120
@@ -403,7 +451,7 @@ def search_best(
         if not is_pawn_action(action):
             return False
         child = apply_action(state, action)
-        return shortest_path(child, perspective)[0] < my_root_dist
+        return movement_path(child, perspective)[0] < my_root_dist
 
     if avoid_actions:
 
@@ -419,10 +467,10 @@ def search_best(
             return False
         child = apply_action(state, action)
         opp = opponent(perspective)
-        my_dist, _ = shortest_path(state, perspective)
-        opp_dist, _ = shortest_path(state, opp)
-        new_my = shortest_path(child, perspective)[0]
-        new_opp = shortest_path(child, opp)[0]
+        my_dist, _ = movement_path(state, perspective)
+        opp_dist, _ = movement_path(state, opp)
+        new_my = movement_path(child, perspective)[0]
+        new_opp = movement_path(child, opp)[0]
         return new_opp <= opp_dist and new_my > my_dist
 
     non_harmful = [action for action in root_actions if not harmful_root_wall(action)]
@@ -430,19 +478,20 @@ def search_best(
         root_actions = non_harmful
 
     opp = opponent(perspective)
-    opp_dist, _ = shortest_path(state, opp)
+    opp_dist, _ = movement_path(state, opp)
     if opp_dist <= 1 and state.walls_left(perspective) > 0:
         blockers: list[tuple[float, str]] = []
         for wall in legal_walls(state, focused=True):
             action = wall_to_text(wall)
             child = apply_action(state, action)
-            if shortest_path(child, opp)[0] > opp_dist:
+            if movement_path(child, opp)[0] > opp_dist:
                 blockers.append((static_eval(child, perspective), action))
         if blockers:
             blockers.sort(reverse=True)
             return blockers[0][1], blockers[0][0], 0
 
     def root_adjusted_score(action: str, score: float) -> float:
+        score += immediate_reply_adjustment(state, action, perspective)
         if action in avoid_actions and not improves_root_path(action):
             return score - 900
         return score
@@ -458,8 +507,8 @@ def search_best(
     def tactical_position(cur: State) -> bool:
         if cur.red[1] == GOAL_ROW["red"] or cur.blue[1] == GOAL_ROW["blue"]:
             return False
-        cur_dist, _ = shortest_path(cur, cur.turn)
-        opp_dist, _ = shortest_path(cur, opponent(cur.turn))
+        cur_dist, _ = movement_path(cur, cur.turn)
+        opp_dist, _ = movement_path(cur, opponent(cur.turn))
         return (
             cur_dist <= 2
             or opp_dist <= 2

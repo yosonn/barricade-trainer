@@ -26,6 +26,8 @@ let userSide = "red";
 let latest = null;
 let editingOwnMove = false;
 let dragPreviewWall = "";
+let touchWallOrient = "";
+let lastWallTouchAt = 0;
 
 const text = {
   red: "紅方",
@@ -437,17 +439,62 @@ actionInput.addEventListener("keydown", (event) => {
 });
 
 boardEl.addEventListener("click", (event) => {
-  if (dragPreviewWall) return;
+  if (dragPreviewWall || Date.now() - lastWallTouchAt < 350) return;
   const square = squareFromPointer(event);
   if (square) commitBoardAction(square, text.clickSaved);
 });
+
+function beginTouchWallDrag(event, orient) {
+  if (event.pointerType === "mouse" || !(orient === "h" || orient === "v")) return;
+  touchWallOrient = orient;
+  dragPreviewWall = "";
+  event.currentTarget.setPointerCapture?.(event.pointerId);
+  event.preventDefault();
+}
+
+function updateTouchWallDrag(event) {
+  if (!touchWallOrient) return;
+  event.preventDefault();
+  const nextPreview = wallFromPointer(event, touchWallOrient);
+  boardEl.classList.toggle("drag-over", Boolean(nextPreview));
+  if (nextPreview !== dragPreviewWall) {
+    dragPreviewWall = nextPreview;
+    if (latest) drawBoard(latest);
+  }
+}
+
+function finishTouchWallDrag(event) {
+  if (!touchWallOrient) return;
+  event.preventDefault();
+  const wall = dragPreviewWall || wallFromPointer(event, touchWallOrient);
+  touchWallOrient = "";
+  dragPreviewWall = "";
+  lastWallTouchAt = Date.now();
+  boardEl.classList.remove("drag-over");
+  if (latest) drawBoard(latest);
+  if (wall) commitBoardAction(wall, text.dragWallSaved);
+}
+
+function cancelTouchWallDrag() {
+  if (!touchWallOrient) return;
+  touchWallOrient = "";
+  dragPreviewWall = "";
+  lastWallTouchAt = Date.now();
+  boardEl.classList.remove("drag-over");
+  if (latest) drawBoard(latest);
+}
 
 document.querySelectorAll(".drag-wall").forEach((tool) => {
   tool.addEventListener("dragstart", (event) => {
     event.dataTransfer.setData("text/plain", tool.dataset.wall);
     event.dataTransfer.effectAllowed = "copy";
   });
+  tool.addEventListener("pointerdown", (event) => beginTouchWallDrag(event, tool.dataset.wall));
 });
+
+document.addEventListener("pointermove", updateTouchWallDrag, { passive: false });
+document.addEventListener("pointerup", finishTouchWallDrag, { passive: false });
+document.addEventListener("pointercancel", cancelTouchWallDrag);
 
 boardEl.addEventListener("dragover", (event) => {
   event.preventDefault();

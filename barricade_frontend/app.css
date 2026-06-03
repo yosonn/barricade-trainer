@@ -252,6 +252,8 @@ small,
 
 .drag-wall {
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
   display: grid;
   place-items: center;
   min-height: 46px;

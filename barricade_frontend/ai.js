@@ -34,6 +34,8 @@ let autoTimer = null;
 let replayTimer = null;
 let replayIndex = null;
 let previewWall = "";
+let touchWallOrient = "";
+let lastWallTouchAt = 0;
 let lastComputerAction = null;
 let autoBusy = false;
 let replayBusy = false;
@@ -543,17 +545,66 @@ actionInput.addEventListener("keydown", (event) => {
 });
 
 boardEl.addEventListener("click", (event) => {
-  if (!hasHumanPlayer() || latest?.turn !== humanSide || previewWall || replayIndex !== null) return;
+  if (!hasHumanPlayer() || latest?.turn !== humanSide || previewWall || replayIndex !== null || Date.now() - lastWallTouchAt < 350) return;
   const square = squareFromPointer(event);
   if (square) tryCommit([square], `\u73a9\u5bb6\u8d70\u4e86 ${square}`);
 });
+
+function canTouchPlaceWall() {
+  return hasHumanPlayer() && latest?.turn === humanSide && replayIndex === null;
+}
+
+function beginTouchWallDrag(event, orient) {
+  if (event.pointerType === "mouse" || !(orient === "h" || orient === "v") || !canTouchPlaceWall()) return;
+  touchWallOrient = orient;
+  previewWall = "";
+  event.currentTarget.setPointerCapture?.(event.pointerId);
+  event.preventDefault();
+}
+
+function updateTouchWallDrag(event) {
+  if (!touchWallOrient) return;
+  event.preventDefault();
+  const nextPreview = wallFromPointer(event, touchWallOrient);
+  boardEl.classList.toggle("drag-over", Boolean(nextPreview));
+  if (nextPreview !== previewWall) {
+    previewWall = nextPreview;
+    if (latest) drawBoard(latest);
+  }
+}
+
+function finishTouchWallDrag(event) {
+  if (!touchWallOrient) return;
+  event.preventDefault();
+  const wall = previewWall || wallFromPointer(event, touchWallOrient);
+  touchWallOrient = "";
+  previewWall = "";
+  lastWallTouchAt = Date.now();
+  boardEl.classList.remove("drag-over");
+  if (latest) drawBoard(latest);
+  if (wall && canTouchPlaceWall()) tryCommit([wall], `玩家放牆 ${wall}`);
+}
+
+function cancelTouchWallDrag() {
+  if (!touchWallOrient) return;
+  touchWallOrient = "";
+  previewWall = "";
+  lastWallTouchAt = Date.now();
+  boardEl.classList.remove("drag-over");
+  if (latest) drawBoard(latest);
+}
 
 document.querySelectorAll(".drag-wall").forEach((tool) => {
   tool.addEventListener("dragstart", (event) => {
     event.dataTransfer.setData("text/plain", tool.dataset.wall);
     event.dataTransfer.effectAllowed = "copy";
   });
+  tool.addEventListener("pointerdown", (event) => beginTouchWallDrag(event, tool.dataset.wall));
 });
+
+document.addEventListener("pointermove", updateTouchWallDrag, { passive: false });
+document.addEventListener("pointerup", finishTouchWallDrag, { passive: false });
+document.addEventListener("pointercancel", cancelTouchWallDrag);
 
 boardEl.addEventListener("dragover", (event) => {
   if (!hasHumanPlayer() || latest?.turn !== humanSide || replayIndex !== null) return;

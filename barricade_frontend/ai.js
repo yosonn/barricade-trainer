@@ -345,9 +345,8 @@ function setMode(nextMode) {
   modeHuman.classList.toggle("active", mode === "human");
   modeTopHuman.classList.toggle("active", mode === "topHuman");
   modeAuto.classList.toggle("active", mode === "auto");
-  if (mode === "topHuman") humanSide = "blue";
   if (mode === "auto") humanSide = "red";
-  playerFirst.disabled = mode === "auto" || mode === "topHuman";
+  playerFirst.disabled = mode === "auto";
   computerFirst.disabled = mode === "auto";
   updateFirstButtons();
   if (latest) render(latest);
@@ -356,12 +355,6 @@ function setMode(nextMode) {
 function setFirst(which) {
   stopAuto();
   lastComputerAction = null;
-  if (mode === "topHuman") {
-    humanSide = "blue";
-    updateFirstButtons();
-    analyze();
-    return;
-  }
   humanSide = which === "player" ? "red" : "blue";
   updateFirstButtons();
   analyze();

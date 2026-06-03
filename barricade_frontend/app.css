@@ -551,6 +551,39 @@ code {
   margin-top: 9px;
 }
 
+
+.ai-strength-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.strength-card {
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid #313a43;
+  border-radius: 8px;
+  background: #15191e;
+}
+
+.strength-card b {
+  color: #f4f7f8;
+}
+
+.strength-card.red-card b {
+  color: #ff667b;
+}
+
+.strength-card.blue-card b {
+  color: #7190ff;
+}
+
+.strength-card .field {
+  gap: 4px;
+}
+
 details {
   border-top: 1px solid #313a43;
   padding-top: 8px;
@@ -597,6 +630,10 @@ details .button-row,
 
   .board-rail {
     align-content: start;
+  }
+
+  .ai-strength-grid {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -19,12 +19,17 @@ const autoBtn = document.querySelector("#autoBtn");
 const undoBtn = document.querySelector("#undoBtn");
 const analyzeBtn = document.querySelector("#analyzeBtn");
 const resetBtn = document.querySelector("#resetBtn");
+const replayStartBtn = document.querySelector("#replayStartBtn");
 const replayBackBtn = document.querySelector("#replayBackBtn");
 const replayPlayBtn = document.querySelector("#replayPlayBtn");
 const replayForwardBtn = document.querySelector("#replayForwardBtn");
 const replayLiveBtn = document.querySelector("#replayLiveBtn");
 const timeLimit = document.querySelector("#timeLimit");
 const depthLimit = document.querySelector("#depthLimit");
+const redTimeLimit = document.querySelector("#redTimeLimit");
+const redDepthLimit = document.querySelector("#redDepthLimit");
+const blueTimeLimit = document.querySelector("#blueTimeLimit");
+const blueDepthLimit = document.querySelector("#blueDepthLimit");
 
 let mode = "human";
 let humanSide = "red";
@@ -100,6 +105,27 @@ function historyWithActions(actions) {
   return `${historyEl.value.trim()} ${clean.join(" ")}`.trim();
 }
 
+function sideToMoveForHistory(history) {
+  const count = history.trim().split(/\s+/).filter(Boolean).length;
+  const start = currentStartTurn();
+  if (count % 2 === 0) return start;
+  return start === "red" ? "blue" : "red";
+}
+
+function searchParamsForSide(side) {
+  if (mode !== "auto") {
+    return { time: Number(timeLimit.value), depth: Number(depthLimit.value) };
+  }
+  if (side === "blue") {
+    return { time: Number(blueTimeLimit.value), depth: Number(blueDepthLimit.value) };
+  }
+  return { time: Number(redTimeLimit.value), depth: Number(redDepthLimit.value) };
+}
+
+function activeSearchParams(history) {
+  return searchParamsForSide(sideToMoveForHistory(history));
+}
+
 function isWallCode(action) {
   return /^[hv][a-h][1-8]$/i.test(action.trim());
 }
@@ -141,6 +167,7 @@ function syncSidesForMode() {
 }
 
 async function fetchAnalysis(history) {
+  const params = activeSearchParams(history);
   const response = await fetch("/api/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -149,8 +176,8 @@ async function fetchAnalysis(history) {
       user_side: humanSide,
       start_turn: currentStartTurn(),
       recommend_for_turn: true,
-      time: Number(timeLimit.value),
-      depth: Number(depthLimit.value),
+      time: params.time,
+      depth: params.depth,
     }),
   });
   return response.json();
@@ -528,6 +555,10 @@ resetBtn.addEventListener("click", () => {
   actionInput.value = "";
   analyze();
 });
+replayStartBtn.addEventListener("click", () => {
+  stopReplay();
+  renderReplay(0);
+});
 replayBackBtn.addEventListener("click", () => renderReplay((replayIndex ?? historyTokens().length) - 1));
 replayForwardBtn.addEventListener("click", () => renderReplay((replayIndex ?? 0) + 1));
 replayPlayBtn.addEventListener("click", toggleReplay);
@@ -637,6 +668,13 @@ boardEl.addEventListener("drop", (event) => {
   if (wall) tryCommit([wall], `\u73a9\u5bb6\u653e\u7246 ${wall}`);
 });
 
+
+[timeLimit, depthLimit, redTimeLimit, redDepthLimit, blueTimeLimit, blueDepthLimit].forEach((input) => {
+  input.addEventListener("change", () => {
+    stopAuto();
+    analyze("\u5df2\u66f4\u65b0\u641c\u5c0b\u8a2d\u5b9a\u3002");
+  });
+});
 historyEl.addEventListener("blur", analyze);
 updateFirstButtons();
 analyze();

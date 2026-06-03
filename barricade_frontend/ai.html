@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Barricade AI 對戰</title>
-    <link rel="stylesheet" href="/app.css?v=2026.06.03.08">
+    <link rel="stylesheet" href="/app.css?v=2026.06.03.09">
   </head>
   <body>
     <main class="app ai-app">
@@ -12,7 +12,7 @@
         <header class="top">
           <div>
             <h1>Barricade AI 對戰</h1>
-            <small class="app-version">版本 2026.06.03.08</small>
+            <small class="app-version">版本 2026.06.03.09</small>
             <p>玩家對電腦 / 上下 AI 對戰 / 雙電腦互玩 / 賽後回放</p>
             <p><a class="top-link" href="/">回到訓練器</a></p>
           </div>
@@ -82,6 +82,7 @@
         <section class="box">
           <h2>回放</h2>
           <div class="button-row">
+            <button id="replayStartBtn" type="button">&#22238;&#21040;&#36215;&#22987;</button>
             <button id="replayBackBtn" type="button">倒回</button>
             <button id="replayPlayBtn" type="button">播放</button>
             <button id="replayForwardBtn" type="button">快轉</button>
@@ -113,9 +114,36 @@
               <input id="depthLimit" type="number" min="1" max="5" step="1" value="3">
             </label>
           </div>
+          <div class="settings-help">
+            <p><b>&#38617;&#38651;&#33126;&#24375;&#24230;</b>&#65306;&#21482;&#22312;&#38617;&#38651;&#33126;&#20114;&#29609;&#27169;&#24335;&#20351;&#29992;&#12290;&#21487;&#20197;&#35731;&#32005;&#26041;&#33287;&#34253;&#26041;&#29992;&#19981;&#21516;&#24605;&#32771;&#26178;&#38291;&#28204;&#35430;&#24375;&#24369;&#24046;&#30064;&#12290;</p>
+          </div>
+          <div class="ai-strength-grid">
+            <div class="strength-card red-card">
+              <b>&#32005;&#26041;&#38651;&#33126;</b>
+              <label class="field">
+                <span>&#25628;&#23563;&#31186;&#25976;</span>
+                <input id="redTimeLimit" type="number" min="0.05" max="5" step="0.05" value="0.5">
+              </label>
+              <label class="field">
+                <span>&#26368;&#22823;&#28145;&#24230;</span>
+                <input id="redDepthLimit" type="number" min="1" max="6" step="1" value="3">
+              </label>
+            </div>
+            <div class="strength-card blue-card">
+              <b>&#34253;&#26041;&#38651;&#33126;</b>
+              <label class="field">
+                <span>&#25628;&#23563;&#31186;&#25976;</span>
+                <input id="blueTimeLimit" type="number" min="0.05" max="5" step="0.05" value="0.5">
+              </label>
+              <label class="field">
+                <span>&#26368;&#22823;&#28145;&#24230;</span>
+                <input id="blueDepthLimit" type="number" min="1" max="6" step="1" value="3">
+              </label>
+            </div>
+          </div>
         </details>
       </aside>
     </main>
-    <script src="/ai.js?v=2026.06.03.08"></script>
+    <script src="/ai.js?v=2026.06.03.09"></script>
   </body>
 </html>

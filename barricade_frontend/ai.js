@@ -166,8 +166,9 @@ function syncSidesForMode() {
   humanSide = firstMover === "player" ? "red" : "blue";
 }
 
-async function fetchAnalysis(history) {
-  const params = activeSearchParams(history);
+async function fetchAnalysis(history, options = {}) {
+  const shouldRecommend = options.recommendForTurn ?? true;
+  const params = shouldRecommend ? activeSearchParams(history) : { time: 0.05, depth: 1 };
   const response = await fetch("/api/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -175,7 +176,7 @@ async function fetchAnalysis(history) {
       history,
       user_side: humanSide,
       start_turn: currentStartTurn(),
-      recommend_for_turn: true,
+      recommend_for_turn: shouldRecommend,
       time: params.time,
       depth: params.depth,
     }),
@@ -207,7 +208,8 @@ async function tryCommit(actions, message = "", options = {}) {
     return false;
   }
   const candidateHistory = historyWithActions(actions);
-  statusText.textContent = t.loading;
+  const nextThinkSide = sideToMoveForHistory(candidateHistory);
+  statusText.textContent = `${sideName(nextThinkSide)}\u601d\u8003\u4e2d...`;
   const payload = await fetchAnalysis(candidateHistory);
   if (!payload.ok) {
     statusText.textContent = `${t.invalid}${payload.error}`;
@@ -500,7 +502,7 @@ async function renderReplay(index) {
   lastComputerAction = null;
   const tokens = historyTokens();
   replayIndex = clamp(index, 0, tokens.length);
-  const payload = await fetchAnalysis(tokens.slice(0, replayIndex).join(" "));
+  const payload = await fetchAnalysis(tokens.slice(0, replayIndex).join(" "), { recommendForTurn: false });
   if (!payload.ok) {
     statusText.textContent = `${t.inputError}${payload.error}`;
     return;

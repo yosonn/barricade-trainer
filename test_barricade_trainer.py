@@ -71,6 +71,25 @@ class BarricadeTrainerTests(unittest.TestCase):
         best, _, _ = b.search_best(state, time_limit=0.2, max_depth=3)
         self.assertNotEqual(best, "e5")
 
+    def test_path_flexibility_counts_useful_moves(self):
+        open_state = b.State(red=b.text_to_coord("e5"), blue=b.text_to_coord("i9"), turn="red")
+        boxed_state = b.State(
+            red=b.text_to_coord("e5"),
+            blue=b.text_to_coord("i9"),
+            turn="red",
+            walls=frozenset({
+                b.text_to_wall("hd5"),
+                b.text_to_wall("ve4"),
+                b.text_to_wall("vf4"),
+            }),
+        )
+        self.assertGreater(b.path_flexibility(open_state, "red"), b.path_flexibility(boxed_state, "red"))
+
+    def test_path_control_rewards_occupying_opponent_route(self):
+        neutral = b.State(red=b.text_to_coord("i6"), blue=b.text_to_coord("g8"), red_walls=0, blue_walls=0)
+        controlled = b.State(red=b.text_to_coord("g6"), blue=b.text_to_coord("g8"), red_walls=0, blue_walls=0)
+        self.assertGreater(b.path_control_score(controlled, "red"), b.path_control_score(neutral, "red"))
+
     def test_recent_reversal_avoid_action_from_history(self):
         avoid = web.recent_reversal_avoid_actions("e2 e8 e3 e7 e4 e6", "red")
         self.assertEqual(avoid, {"e1", "e2", "e3"})
@@ -100,3 +119,4 @@ class BarricadeTrainerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

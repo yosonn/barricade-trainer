@@ -299,6 +299,44 @@ def player_has_goal_move(state: State, player: str) -> bool:
     return any(move[1] == GOAL_ROW[player] for move in legal_pawn_moves(state, player))
 
 
+def distance_after_pawn_move(state: State, player: str, move: Coord) -> int:
+    child = apply_action(replace(state, turn=player), coord_to_text(move))
+    return movement_path(child, player)[0]
+
+
+def path_flexibility(state: State, player: str) -> int:
+    dist, _ = movement_path(state, player)
+    if dist == math.inf:
+        return 0
+    useful = 0
+    for move in legal_pawn_moves(state, player):
+        if distance_after_pawn_move(state, player, move) <= dist:
+            useful += 1
+    return useful
+
+
+def path_control_score(state: State, player: str) -> float:
+    them = opponent(player)
+    _, my_path = movement_path(state, player)
+    _, their_path = movement_path(state, them)
+    my_window = my_path[1:5]
+    their_window = their_path[1:5]
+    my_pos = state.pawn(player)
+    their_pos = state.pawn(them)
+    score = 0.0
+
+    if my_pos in their_window:
+        score += 32 - their_window.index(my_pos) * 6
+    if their_pos in my_window:
+        score -= 32 - my_window.index(their_pos) * 6
+
+    shared = set(my_window) & set(their_window)
+    score += len(shared) * 8
+    if state.walls_left(player) + state.walls_left(them) <= 2:
+        score *= 1.6
+    return score
+
+
 def immediate_reply_adjustment(state: State, action: str, perspective: str) -> float:
     if not is_pawn_action(action):
         return 0
@@ -311,6 +349,17 @@ def immediate_reply_adjustment(state: State, action: str, perspective: str) -> f
     enemy = state.pawn(opp)
     if abs(pos[0] - enemy[0]) + abs(pos[1] - enemy[1]) == 1 and old_pos in legal_pawn_moves(child, opp):
         score -= 260
+
+    my_dist, _ = movement_path(state, perspective)
+    new_my_dist, _ = movement_path(child, perspective)
+    opp_dist, _ = movement_path(state, opp)
+    new_opp_dist, _ = movement_path(child, opp)
+    if state.walls_left(perspective) + state.walls_left(opp) <= 2:
+        if new_my_dist > my_dist and new_opp_dist <= opp_dist:
+            score -= 120
+        if new_opp_dist > opp_dist and new_my_dist <= my_dist + 1:
+            score += 90
+    score += (path_control_score(child, perspective) - path_control_score(state, perspective)) * 0.7
     return score
 
 
@@ -326,7 +375,11 @@ def static_eval(state: State, perspective: str) -> float:
 
     my_walls = state.walls_left(me)
     their_walls = state.walls_left(them)
-    path_score = (their_dist - my_dist) * 100
+    low_wall_endgame = my_walls + their_walls <= 2
+    path_weight = 135 if low_wall_endgame else 100
+    if min(my_dist, their_dist) <= 4:
+        path_weight += 25
+    path_score = (their_dist - my_dist) * path_weight
     progress = (state.pawn(me)[1] * FORWARD[me] - state.pawn(them)[1] * FORWARD[them]) * 2
 
     # Walls are most valuable before the final sprint, and especially when
@@ -358,8 +411,11 @@ def static_eval(state: State, perspective: str) -> float:
         tempo_score -= 700
 
     mobility_score = (len(legal_pawn_moves(state, me)) - len(legal_pawn_moves(state, them))) * 5
+    flex_weight = 18 if low_wall_endgame else 9
+    flexibility_score = (path_flexibility(state, me) - path_flexibility(state, them)) * flex_weight
+    control_score = path_control_score(state, me)
 
-    return path_score + wall_score + reserve_score + progress + tempo_score + mobility_score
+    return path_score + wall_score + reserve_score + progress + tempo_score + mobility_score + flexibility_score + control_score
 
 
 def action_score(state: State, action: str, perspective: str) -> float:
@@ -453,11 +509,21 @@ def search_best(
         child = apply_action(state, action)
         return movement_path(child, perspective)[0] < my_root_dist
 
+    def tactically_justified_reposition(action: str) -> bool:
+        if not is_pawn_action(action):
+            return False
+        child = apply_action(state, action)
+        opp = opponent(perspective)
+        opp_dist, _ = movement_path(state, opp)
+        new_opp_dist, _ = movement_path(child, opp)
+        control_gain = path_control_score(child, perspective) - path_control_score(state, perspective)
+        return new_opp_dist > opp_dist or control_gain >= 18
+
     if avoid_actions:
 
         non_reversing = [
             action for action in root_actions
-            if action not in avoid_actions or improves_root_path(action)
+            if action not in avoid_actions or improves_root_path(action) or tactically_justified_reposition(action)
         ]
         if non_reversing:
             root_actions = non_reversing
@@ -492,7 +558,7 @@ def search_best(
 
     def root_adjusted_score(action: str, score: float) -> float:
         score += immediate_reply_adjustment(state, action, perspective)
-        if action in avoid_actions and not improves_root_path(action):
+        if action in avoid_actions and not improves_root_path(action) and not tactically_justified_reposition(action):
             return score - 900
         return score
 

@@ -246,8 +246,10 @@ def tokenize_history(history: str) -> list[str]:
     return re.findall(r"[hv]?[a-i][1-9][hv]?", cleaned, flags=re.I)
 
 
-def state_from_history(history: str) -> State:
-    state = State()
+def state_from_history(history: str, start_turn: str = "red") -> State:
+    if start_turn not in PLAYERS:
+        raise ValueError("start_turn must be red or blue")
+    state = State(turn=start_turn)
     for token in tokenize_history(history):
         state = apply_action(state, token)
     return state
@@ -311,6 +313,8 @@ def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
         new_opp = shortest_path(trial, opp)[0]
         gain = (new_opp - opp_dist) * 120 - (new_my - my_dist) * 90
         gain += static_eval(trial, state.turn) * 0.02
+        if opp_dist <= 1 and new_opp > opp_dist:
+            gain += 2200 + (new_opp - opp_dist) * 350
         if state.walls_left(state.turn) <= 2 and new_opp - opp_dist < 2:
             gain -= 80
         if opp_dist <= my_dist + 1 and new_opp > opp_dist:
@@ -333,6 +337,19 @@ def search_best(state: State, time_limit: float = 1.0, max_depth: int = 4) -> tu
     ]
     if winning_moves:
         return winning_moves[0], 100000, 0
+
+    opp = opponent(perspective)
+    opp_dist, _ = shortest_path(state, opp)
+    if opp_dist <= 1 and state.walls_left(perspective) > 0:
+        blockers: list[tuple[float, str]] = []
+        for wall in legal_walls(state, focused=True):
+            action = wall_to_text(wall)
+            child = apply_action(state, action)
+            if shortest_path(child, opp)[0] > opp_dist:
+                blockers.append((static_eval(child, perspective), action))
+        if blockers:
+            blockers.sort(reverse=True)
+            return blockers[0][1], blockers[0][0], 0
 
     best_action = root_actions[0]
     best_score = static_eval(apply_action(state, best_action), perspective)

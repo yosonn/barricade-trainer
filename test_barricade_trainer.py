@@ -10,6 +10,12 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(state.blue, b.text_to_coord("e7"))
         self.assertEqual(state.turn, "red")
 
+    def test_blue_can_start_history(self):
+        state = b.state_from_history("e8", start_turn="blue")
+        self.assertEqual(state.blue, b.text_to_coord("e8"))
+        self.assertEqual(state.red, b.text_to_coord("e1"))
+        self.assertEqual(state.turn, "red")
+
     def test_wall_blocks_shortest_path(self):
         state = b.apply_action(b.State(), "he1")
         dist, path = b.shortest_path(state, "red")
@@ -40,6 +46,19 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(state.blue_walls, 6)
         self.assertLess(b.shortest_path(state, "red")[0], float("inf"))
         self.assertLess(b.shortest_path(state, "blue")[0], float("inf"))
+
+    def test_search_blocks_one_step_opponent_win(self):
+        state = b.State(
+            red=b.text_to_coord("a5"),
+            blue=b.text_to_coord("e2"),
+            turn="red",
+            red_walls=10,
+            blue_walls=10,
+        )
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=2)
+        child = b.apply_action(state, best)
+        self.assertRegex(best, r"^[hv][a-h][1-8]$")
+        self.assertGreater(b.shortest_path(child, "blue")[0], 1)
 
 
 if __name__ == "__main__":

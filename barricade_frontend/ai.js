@@ -28,6 +28,7 @@ const depthLimit = document.querySelector("#depthLimit");
 
 let mode = "human";
 let humanSide = "red";
+let firstMover = "player";
 let latest = null;
 let autoTimer = null;
 let replayTimer = null;
@@ -117,6 +118,24 @@ function wallLimitMessage(actions) {
   return "";
 }
 
+function currentStartTurn() {
+  if (mode === "topHuman") return firstMover === "player" ? "blue" : "red";
+  return "red";
+}
+
+function syncSidesForMode() {
+  if (mode === "topHuman") {
+    humanSide = "blue";
+    return;
+  }
+  if (mode === "auto") {
+    humanSide = "red";
+    firstMover = "computer";
+    return;
+  }
+  humanSide = firstMover === "player" ? "red" : "blue";
+}
+
 async function fetchAnalysis(history) {
   const response = await fetch("/api/analyze", {
     method: "POST",
@@ -124,6 +143,7 @@ async function fetchAnalysis(history) {
     body: JSON.stringify({
       history,
       user_side: humanSide,
+      start_turn: currentStartTurn(),
       recommend_for_turn: true,
       time: Number(timeLimit.value),
       depth: Number(depthLimit.value),
@@ -198,9 +218,12 @@ function hasHumanPlayer() {
 }
 
 function updateModeText(state, humanTurn) {
-  const playerLabel = humanSide === "red" ? "\u73a9\u5bb6\u5148\u624b\uff08\u7d05\u65b9\uff09" : "\u96fb\u8166\u5148\u624b\uff0c\u73a9\u5bb6\u5f8c\u624b\uff08\u85cd\u65b9\uff09";
-  if (mode === "topHuman") modeHint.textContent = `\u4e0a\u65b9\u73a9\u5bb6\u3001\u4e0b\u65b9\u96fb\u8166\u3002${playerLabel}\u3002`;
-  else if (mode === "human") modeHint.textContent = `\u73a9\u5bb6\u5c0d\u96fb\u8166\u3002${playerLabel}\u3002`;
+  const firstLabel = firstMover === "player" ? "\u73a9\u5bb6\u5148\u624b" : "\u96fb\u8166\u5148\u624b";
+  if (mode === "topHuman") modeHint.textContent = `\u4e0a\u65b9\u73a9\u5bb6\uff08\u85cd\u65b9\uff09\u3001\u4e0b\u65b9\u96fb\u8166\uff08\u7d05\u65b9\uff09\u3002${firstLabel}\u3002`;
+  else if (mode === "human") {
+    const playerSide = humanSide === "red" ? "\u7d05\u65b9" : "\u85cd\u65b9";
+    modeHint.textContent = `\u73a9\u5bb6\u5c0d\u96fb\u8166\u3002${firstLabel}\uff0c\u73a9\u5bb6\u70ba${playerSide}\u3002`;
+  }
   else modeHint.textContent = "\u96d9\u96fb\u8166\u4e92\u73a9\uff0c\u6703\u4f9d\u7167\u76ee\u524d\u641c\u5c0b\u79d2\u6578\u8207\u6700\u5927\u6df1\u5ea6\u81ea\u52d5\u6c7a\u7b56\u3002";
 
   if (state.winner) statusText.textContent = `${sideName(state.winner)}\u7372\u52dd\uff0c\u53ef\u4ee5\u4f7f\u7528\u56de\u653e\u63a7\u5236\u6aa2\u8996\u68cb\u5c40\u3002`;
@@ -345,24 +368,26 @@ function setMode(nextMode) {
   modeHuman.classList.toggle("active", mode === "human");
   modeTopHuman.classList.toggle("active", mode === "topHuman");
   modeAuto.classList.toggle("active", mode === "auto");
-  if (mode === "auto") humanSide = "red";
+  syncSidesForMode();
   playerFirst.disabled = mode === "auto";
   computerFirst.disabled = mode === "auto";
   updateFirstButtons();
+  analyze();
   if (latest) render(latest);
 }
 
 function setFirst(which) {
   stopAuto();
   lastComputerAction = null;
-  humanSide = which === "player" ? "red" : "blue";
+  firstMover = which;
+  syncSidesForMode();
   updateFirstButtons();
   analyze();
 }
 
 function updateFirstButtons() {
-  playerFirst.classList.toggle("active", humanSide === "red");
-  computerFirst.classList.toggle("active", humanSide === "blue");
+  playerFirst.classList.toggle("active", firstMover === "player");
+  computerFirst.classList.toggle("active", firstMover === "computer");
 }
 
 async function aiStep() {

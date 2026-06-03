@@ -35,7 +35,14 @@ def verdict(score: float, win: str | None, perspective: str) -> str:
     return "\u5c40\u52e2\u63a5\u8fd1"
 
 
-def state_payload(state: engine.State, user_side: str, search_time: float, depth: int, recommend_for_turn: bool = False) -> dict:
+def state_payload(
+    state: engine.State,
+    user_side: str,
+    search_time: float,
+    depth: int,
+    recommend_for_turn: bool = False,
+    start_turn: str = "red",
+) -> dict:
     red_dist, red_path = engine.shortest_path(state, "red")
     blue_dist, blue_path = engine.shortest_path(state, "blue")
     actions = engine.ordered_actions(state, limit_walls=18)
@@ -55,6 +62,7 @@ def state_payload(state: engine.State, user_side: str, search_time: float, depth
 
     return {
         "turn": state.turn,
+        "start_turn": start_turn,
         "user_side": user_side,
         "user_to_move": state.turn == user_side,
         "red": {
@@ -123,11 +131,17 @@ class Handler(SimpleHTTPRequestHandler):
             user_side = str(payload.get("user_side", "red"))
             if user_side not in engine.PLAYERS:
                 raise ValueError("user_side must be red or blue")
+            start_turn = str(payload.get("start_turn", "red"))
+            if start_turn not in engine.PLAYERS:
+                raise ValueError("start_turn must be red or blue")
             search_time = max(0.05, min(float(payload.get("time", 0.5)), 3.0))
             depth = max(1, min(int(payload.get("depth", 3)), 5))
             recommend_for_turn = bool(payload.get("recommend_for_turn", False))
-            state = engine.state_from_history(history)
-            self.write_json({"ok": True, "state": state_payload(state, user_side, search_time, depth, recommend_for_turn)})
+            state = engine.state_from_history(history, start_turn=start_turn)
+            self.write_json({
+                "ok": True,
+                "state": state_payload(state, user_side, search_time, depth, recommend_for_turn, start_turn),
+            })
         except Exception as exc:
             self.write_json({"ok": False, "error": str(exc)}, status=400)
 

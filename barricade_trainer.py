@@ -369,6 +369,54 @@ def wall_resource_adjustment(state: State, action: str, perspective: str) -> flo
     return score
 
 
+def race_conversion_adjustment(state: State, action: str, perspective: str) -> float:
+    """Prefer converting a large race lead into progress instead of spending final walls."""
+    opp = opponent(perspective)
+    my_dist, _ = movement_path(state, perspective)
+    opp_dist, _ = movement_path(state, opp)
+    if my_dist == math.inf or opp_dist == math.inf:
+        return 0.0
+
+    lead = opp_dist - my_dist
+    if my_dist > 4 or lead < 6:
+        return 0.0
+
+    child = apply_action(state, action)
+    new_my_dist, _ = movement_path(child, perspective)
+    new_opp_dist, _ = movement_path(child, opp)
+    my_walls = state.walls_left(perspective)
+    opp_walls = state.walls_left(opp)
+    score = 0.0
+
+    if is_pawn_action(action):
+        progress = my_dist - new_my_dist
+        if progress > 0:
+            score += 520 + progress * 180 + max(0, 4 - my_dist) * 80
+        else:
+            score -= 520 + (new_my_dist - my_dist) * 180
+        return score
+
+    opp_delay = new_opp_dist - opp_dist
+    self_delay = new_my_dist - my_dist
+    score -= 460
+    if my_walls <= 2:
+        score -= 620
+    if opp_walls - my_walls >= 3:
+        score -= 220
+    if opp_delay < 4:
+        score -= 320
+    score += min(max(opp_delay, 0), 4) * 90
+    if self_delay > 0:
+        score -= self_delay * 220
+    return score
+
+
+def should_convert_race_by_sprinting(state: State, perspective: str) -> bool:
+    my_dist, _ = movement_path(state, perspective)
+    opp_dist, _ = movement_path(state, opponent(perspective))
+    return my_dist <= 4 and opp_dist >= my_dist + 6
+
+
 def immediate_reply_adjustment(state: State, action: str, perspective: str) -> float:
     if not is_pawn_action(action):
         return 0
@@ -476,6 +524,7 @@ def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
         score = action_score(state, action, perspective)
         score += (my_dist - new_my) * 90
         score += immediate_reply_adjustment(state, action, perspective)
+        score += race_conversion_adjustment(state, action, perspective)
         if len(my_path) > 1 and pos == my_path[1]:
             score += 80
         if opp_dist <= 1 and pos[1] != GOAL_ROW[perspective]:
@@ -493,6 +542,7 @@ def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
         gain = opp_delay * 150 - self_delay * 120
         gain += static_eval(trial, state.turn) * 0.02
         gain += wall_resource_adjustment(state, action, state.turn)
+        gain += race_conversion_adjustment(state, action, state.turn)
         if opp_delay <= 0:
             gain -= 120
         if opp_dist <= 1 and opp_delay > 0:
@@ -578,6 +628,15 @@ def search_best(
 
     opp = opponent(perspective)
     opp_dist, _ = movement_path(state, opp)
+    if should_convert_race_by_sprinting(state, perspective):
+        progress_actions = [
+            action for action in root_actions
+            if is_pawn_action(action)
+            and movement_path(apply_action(state, action), perspective)[0] < movement_path(state, perspective)[0]
+        ]
+        if progress_actions:
+            root_actions = progress_actions
+
     if opp_dist <= 1 and state.walls_left(perspective) > 0:
         blockers: list[tuple[float, str]] = []
         for wall in legal_walls(state, focused=True):
@@ -592,6 +651,7 @@ def search_best(
     def root_adjusted_score(action: str, score: float) -> float:
         score += immediate_reply_adjustment(state, action, perspective)
         score += wall_resource_adjustment(state, action, perspective)
+        score += race_conversion_adjustment(state, action, perspective)
         if action in avoid_actions and not improves_root_path(action) and not tactically_justified_reposition(action):
             return score - 900
         return score

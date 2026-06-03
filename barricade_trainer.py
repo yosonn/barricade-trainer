@@ -379,9 +379,15 @@ def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
     return [action for _, action in scored_actions]
 
 
-def search_best(state: State, time_limit: float = 1.0, max_depth: int = 4) -> tuple[str, float, int]:
+def search_best(
+    state: State,
+    time_limit: float = 1.0,
+    max_depth: int = 4,
+    avoid_actions: set[str] | None = None,
+) -> tuple[str, float, int]:
     deadline = time.perf_counter() + time_limit
     perspective = state.turn
+    avoid_actions = avoid_actions or set()
     root_actions = ordered_actions(state, limit_walls=16)[:ROOT_ACTION_LIMIT]
     winning_moves = [
         action for action in root_actions
@@ -404,8 +410,13 @@ def search_best(state: State, time_limit: float = 1.0, max_depth: int = 4) -> tu
             blockers.sort(reverse=True)
             return blockers[0][1], blockers[0][0], 0
 
+    def root_adjusted_score(action: str, score: float) -> float:
+        if action in avoid_actions:
+            return score - 900
+        return score
+
     best_action = root_actions[0]
-    best_score = static_eval(apply_action(state, best_action), perspective)
+    best_score = root_adjusted_score(best_action, static_eval(apply_action(state, best_action), perspective))
     reached_depth = 0
 
     transposition: dict[tuple[tuple, int, int], float] = {}
@@ -485,8 +496,9 @@ def search_best(state: State, time_limit: float = 1.0, max_depth: int = 4) -> tu
             for action in root_actions:
                 child = apply_action(state, action)
                 score = -negamax(child.key(), depth - 1, -math.inf, -alpha, 1)
-                if score > local_score:
-                    local_best, local_score = action, score
+                adjusted = root_adjusted_score(action, score)
+                if adjusted > local_score:
+                    local_best, local_score = action, adjusted
                 alpha = max(alpha, local_score)
                 if time.perf_counter() >= deadline:
                     raise TimeoutError

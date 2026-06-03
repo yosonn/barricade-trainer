@@ -219,7 +219,7 @@ function hasHumanPlayer() {
 
 function updateModeText(state, humanTurn) {
   const firstLabel = firstMover === "player" ? "\u73a9\u5bb6\u5148\u624b" : "\u96fb\u8166\u5148\u624b";
-  if (mode === "topHuman") modeHint.textContent = `\u4e0a\u65b9\u73a9\u5bb6\uff08\u85cd\u65b9\uff09\u3001\u4e0b\u65b9\u96fb\u8166\uff08\u7d05\u65b9\uff09\u3002${firstLabel}\u3002`;
+  if (mode === "topHuman") modeHint.textContent = `\u4f60\u63a7\u5236\u4e0a\u65b9\u85cd\u65b9\uff0c\u96fb\u8166\u63a7\u5236\u4e0b\u65b9\u7d05\u65b9\u3002${firstLabel}\u3002`;
   else if (mode === "human") {
     const playerSide = humanSide === "red" ? "\u7d05\u65b9" : "\u85cd\u65b9";
     modeHint.textContent = `\u73a9\u5bb6\u5c0d\u96fb\u8166\u3002${firstLabel}\uff0c\u73a9\u5bb6\u70ba${playerSide}\u3002`;

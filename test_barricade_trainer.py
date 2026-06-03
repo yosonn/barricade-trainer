@@ -1,6 +1,7 @@
 import unittest
 
 import barricade_trainer as b
+import barricade_web as web
 
 
 class BarricadeTrainerTests(unittest.TestCase):
@@ -59,6 +60,10 @@ class BarricadeTrainerTests(unittest.TestCase):
         child = b.apply_action(state, best)
         self.assertRegex(best, r"^[hv][a-h][1-8]$")
         self.assertGreater(b.shortest_path(child, "blue")[0], 1)
+
+    def test_recent_reversal_avoid_action_from_history(self):
+        avoid = web.recent_reversal_avoid_actions("e2 e8 e3 e7 e4 e6", "red")
+        self.assertEqual(avoid, {"e3"})
 
 
 if __name__ == "__main__":

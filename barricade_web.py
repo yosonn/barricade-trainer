@@ -42,6 +42,7 @@ def state_payload(
     depth: int,
     recommend_for_turn: bool = False,
     start_turn: str = "red",
+    avoid_actions: set[str] | None = None,
 ) -> dict:
     red_dist, red_path = engine.shortest_path(state, "red")
     blue_dist, blue_path = engine.shortest_path(state, "blue")
@@ -58,6 +59,7 @@ def state_payload(
             state,
             time_limit=search_time,
             max_depth=depth,
+            avoid_actions=avoid_actions,
         )
 
     return {
@@ -96,6 +98,19 @@ def winner(state: engine.State) -> str | None:
     if state.blue[1] == engine.GOAL_ROW["blue"]:
         return "blue"
     return None
+
+
+def recent_reversal_avoid_actions(history: str, start_turn: str) -> set[str]:
+    state = engine.State(turn=start_turn)
+    last_from: dict[str, str] = {}
+    for token in engine.tokenize_history(history):
+        side = state.turn
+        before = state.pawn(side)
+        state = engine.apply_action(state, token)
+        if engine.is_pawn_action(token):
+            last_from[side] = engine.coord_to_text(before)
+    avoid = last_from.get(state.turn)
+    return {avoid} if avoid else set()
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -138,9 +153,18 @@ class Handler(SimpleHTTPRequestHandler):
             depth = max(1, min(int(payload.get("depth", 3)), 5))
             recommend_for_turn = bool(payload.get("recommend_for_turn", False))
             state = engine.state_from_history(history, start_turn=start_turn)
+            avoid_actions = recent_reversal_avoid_actions(history, start_turn)
             self.write_json({
                 "ok": True,
-                "state": state_payload(state, user_side, search_time, depth, recommend_for_turn, start_turn),
+                "state": state_payload(
+                    state,
+                    user_side,
+                    search_time,
+                    depth,
+                    recommend_for_turn,
+                    start_turn,
+                    avoid_actions,
+                ),
             })
         except Exception as exc:
             self.write_json({"ok": False, "error": str(exc)}, status=400)

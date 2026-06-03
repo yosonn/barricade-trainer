@@ -75,6 +75,18 @@ class BarricadeTrainerTests(unittest.TestCase):
         best, _, _ = b.search_best(state, time_limit=0.2, max_depth=2, avoid_actions=avoid)
         self.assertNotEqual(best, "e2")
 
+    def test_recent_position_filter_keeps_shortest_path_progress(self):
+        history = (
+            "e2 e8 e3 e7 e4 e6 e5 e4 e6 he6 d6 hc6 c6 vb5 "
+            "he3 d4 hc3 c4 vb3 vc5 vf4 hg6 hg5 hh8 hh4 vh7 "
+            "c5 vf2 d4 ve1 d5 vd5 ve5 c5 vd1"
+        )
+        state = b.state_from_history(history)
+        avoid = web.recent_reversal_avoid_actions(history, "red")
+        self.assertIn("c4", avoid)
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=2, avoid_actions=avoid)
+        self.assertEqual(best, "c4")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -397,8 +397,20 @@ def search_best(
     if winning_moves:
         return winning_moves[0], 100000, 0
 
+    my_root_dist, _ = shortest_path(state, perspective)
+
+    def improves_root_path(action: str) -> bool:
+        if not is_pawn_action(action):
+            return False
+        child = apply_action(state, action)
+        return shortest_path(child, perspective)[0] < my_root_dist
+
     if avoid_actions:
-        non_reversing = [action for action in root_actions if action not in avoid_actions]
+
+        non_reversing = [
+            action for action in root_actions
+            if action not in avoid_actions or improves_root_path(action)
+        ]
         if non_reversing:
             root_actions = non_reversing
 
@@ -431,7 +443,7 @@ def search_best(
             return blockers[0][1], blockers[0][0], 0
 
     def root_adjusted_score(action: str, score: float) -> float:
-        if action in avoid_actions:
+        if action in avoid_actions and not improves_root_path(action):
             return score - 900
         return score
 

@@ -397,6 +397,26 @@ def search_best(
     if winning_moves:
         return winning_moves[0], 100000, 0
 
+    if avoid_actions:
+        non_reversing = [action for action in root_actions if action not in avoid_actions]
+        if non_reversing:
+            root_actions = non_reversing
+
+    def harmful_root_wall(action: str) -> bool:
+        if is_pawn_action(action):
+            return False
+        child = apply_action(state, action)
+        opp = opponent(perspective)
+        my_dist, _ = shortest_path(state, perspective)
+        opp_dist, _ = shortest_path(state, opp)
+        new_my = shortest_path(child, perspective)[0]
+        new_opp = shortest_path(child, opp)[0]
+        return new_opp <= opp_dist and new_my > my_dist
+
+    non_harmful = [action for action in root_actions if not harmful_root_wall(action)]
+    if non_harmful:
+        root_actions = non_harmful
+
     opp = opponent(perspective)
     opp_dist, _ = shortest_path(state, opp)
     if opp_dist <= 1 and state.walls_left(perspective) > 0:

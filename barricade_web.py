@@ -12,7 +12,7 @@ import barricade_trainer as engine
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
-APP_VERSION = "2026.06.03.02"
+APP_VERSION = "2026.06.03.03"
 
 
 def win_rate_from_score(score: float) -> float:
@@ -104,15 +104,15 @@ def winner(state: engine.State) -> str | None:
 
 def recent_reversal_avoid_actions(history: str, start_turn: str) -> set[str]:
     state = engine.State(turn=start_turn)
-    last_from: dict[str, str] = {}
+    recent_positions: dict[str, list[str]] = {"red": [], "blue": []}
     for token in engine.tokenize_history(history):
         side = state.turn
         before = state.pawn(side)
         state = engine.apply_action(state, token)
         if engine.is_pawn_action(token):
-            last_from[side] = engine.coord_to_text(before)
-    avoid = last_from.get(state.turn)
-    return {avoid} if avoid else set()
+            recent_positions[side].append(engine.coord_to_text(before))
+            recent_positions[side] = recent_positions[side][-3:]
+    return set(recent_positions.get(state.turn, []))
 
 
 class Handler(SimpleHTTPRequestHandler):

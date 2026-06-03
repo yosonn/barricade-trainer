@@ -63,7 +63,17 @@ class BarricadeTrainerTests(unittest.TestCase):
 
     def test_recent_reversal_avoid_action_from_history(self):
         avoid = web.recent_reversal_avoid_actions("e2 e8 e3 e7 e4 e6", "red")
-        self.assertEqual(avoid, {"e3"})
+        self.assertEqual(avoid, {"e1", "e2", "e3"})
+
+    def test_search_avoids_immediate_reversal_when_alternatives_exist(self):
+        history = (
+            "e2 e8 e3 e7 e4 e6 d4 e5 d5 e4 d6 hc6 hc5 vd5 "
+            "ha5 ha7 vc7 hb8 c6 e3 b6 e2 hd1 f2 hf1"
+        )
+        state = b.state_from_history(history)
+        avoid = web.recent_reversal_avoid_actions(history, "red")
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=2, avoid_actions=avoid)
+        self.assertNotEqual(best, "e2")
 
 
 if __name__ == "__main__":

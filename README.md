@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.04.08
+## Current Status: 2026.06.04.09
 
 The production web/API backend still uses the tuned alpha-beta search in
 `barricade_trainer.py`. MCTS remains an experimental candidate backend, enabled
@@ -23,6 +23,11 @@ Version `2026.06.04.08` adds a loss decision audit tool:
 `tools/barricade_backtest/audit_losses.py`. It reads backtest `games.jsonl`
 files, audits lost games for a selected engine, compares actual moves against
 alpha-beta recommendations, and writes `loss_audit.json` / `loss_audit.md`.
+
+Version `2026.06.04.09` fixes the AI battle UI layout after the realtime
+analysis panel was added. The board now stays top-aligned and scales to the
+available viewport height, while the analysis rail and candidate list scroll
+inside their own containers instead of pushing the board out of view.
 
 Latest extended result: alpha-beta depth 3 vs MCTS 80 simulations, 20 games,
 candidate 50%, baseline 50%, errors 0. A parameter sweep found promising

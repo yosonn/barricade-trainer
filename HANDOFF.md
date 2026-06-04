@@ -281,3 +281,26 @@ Verification:
   323.8.
 - Main pattern: low-wall race mistakes where MCTS moved away from goal while
   alpha-beta preferred forward progress.
+
+## 2026.06.04.09 AI Layout Fix Segment
+
+Production backend remains alpha-beta. This segment fixes the UI/UX regression
+introduced by adding the realtime analysis rail.
+
+Changes:
+
+- AI board shell now top-aligns its children so the board no longer gets pushed
+  downward by the taller analysis panel.
+- Board size is capped by available viewport height.
+- Realtime analysis rail and candidate move list use internal scrolling.
+- At narrower desktop widths, `ai.html` stacks the main board area and control
+  panel instead of squeezing three board-area columns plus the side panel into
+  one row.
+
+Verification:
+
+- Local HTTP checks confirmed `ai.html`, `app.css`, and `/api/analyze` expose
+  version `2026.06.04.09`.
+- Browser automation was attempted but blocked by the in-app browser sandbox
+  startup failure, so rendered screenshot validation still needs a live reload
+  check after deploy.

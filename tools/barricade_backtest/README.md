@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.04.08`
+Current project version: `2026.06.04.09`
 
 The tool supports two execution modes:
 
@@ -100,7 +100,10 @@ mode for verifying that the deployed service still matches expected behavior.
 
 ## Recent Verification
 
-The latest promoted project version is `2026.06.04.08`.
+The latest promoted project version is `2026.06.04.09`.
+
+Version `2026.06.04.09` fixes the `ai.html` UI layout so the board and realtime
+analysis panel remain readable on desktop and narrower browser widths.
 
 Version `2026.06.04.08` adds `audit_losses.py` for loss decision audits. A full
 audit of `backtest_runs/mcts-v3-candidate-12` reviewed 6 candidate losses. The

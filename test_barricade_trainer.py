@@ -71,6 +71,12 @@ class BarricadeTrainerTests(unittest.TestCase):
         best, _, _ = b.search_best(state, time_limit=0.2, max_depth=3)
         self.assertNotEqual(best, "e5")
 
+    def test_blue_opening_book_chooses_deeper_search_branch(self):
+        state = b.state_from_history("e2 e8 e3 e7 e4")
+        best, _, depth = b.search_best(state, time_limit=0.05, max_depth=3)
+        self.assertEqual(best, "hd4")
+        self.assertEqual(depth, 0)
+
     def test_path_flexibility_counts_useful_moves(self):
         open_state = b.State(red=b.text_to_coord("e5"), blue=b.text_to_coord("i9"), turn="red")
         boxed_state = b.State(

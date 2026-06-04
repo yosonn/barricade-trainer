@@ -417,6 +417,19 @@ def should_convert_race_by_sprinting(state: State, perspective: str) -> bool:
     return my_dist <= 4 and opp_dist >= my_dist + 6
 
 
+def opening_book_action(state: State) -> str | None:
+    if (
+        state.turn == "blue"
+        and state.red == text_to_coord("e4")
+        and state.blue == text_to_coord("e7")
+        and state.red_walls == 10
+        and state.blue_walls == 10
+        and not state.walls
+    ):
+        return "hd4"
+    return None
+
+
 def immediate_reply_adjustment(state: State, action: str, perspective: str) -> float:
     if not is_pawn_action(action):
         return 0
@@ -575,6 +588,10 @@ def search_best(
     deadline = time.perf_counter() + time_limit
     perspective = state.turn
     avoid_actions = avoid_actions or set()
+    book_action = opening_book_action(state) if max_depth >= 3 else None
+    if book_action and book_action in ordered_actions(state, limit_walls=16):
+        return book_action, static_eval(apply_action(state, book_action), perspective), 0
+
     root_actions = ordered_actions(state, limit_walls=16)[:ROOT_ACTION_LIMIT]
     winning_moves = [
         action for action in root_actions

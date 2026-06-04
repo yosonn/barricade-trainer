@@ -260,3 +260,24 @@ Verification:
 - `node --check` passed for `ai.js` and `app.js`.
 - Local HTTP smoke verified `ai.html`, `ai.js`, `app.css`, and `/api/analyze`
   all expose version `2026.06.04.07` analysis assets/data.
+
+## 2026.06.04.08 Loss Decision Audit Segment
+
+Production backend remains alpha-beta. This segment adds tooling to understand
+why experimental MCTS loses instead of changing the production model.
+
+Changes:
+
+- Added `tools/barricade_backtest/audit_losses.py`.
+- The tool reads a backtest run directory or `games.jsonl`, audits losses for a
+  selected engine, and compares each audited move against alpha-beta.
+- Outputs `loss_audit.json` and `loss_audit.md` with regret scores, phase labels,
+  distance deltas, and reason tags such as `stepped-away-from-goal`.
+
+Verification:
+
+- Full audit of `backtest_runs/mcts-v3-candidate-12` reviewed 6 candidate losses.
+- Top suspect: game 10 ply 62, blue actual `f5` vs alpha-beta `f7`, regret
+  323.8.
+- Main pattern: low-wall race mistakes where MCTS moved away from goal while
+  alpha-beta preferred forward progress.

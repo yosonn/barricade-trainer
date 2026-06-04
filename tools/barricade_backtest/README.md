@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.04.07`
+Current project version: `2026.06.04.08`
 
 The tool supports two execution modes:
 
@@ -53,6 +53,21 @@ Outputs are written to `backtest_runs/<timestamp>/`:
 - `summary.md`: win rate, errors, and replay notes.
 - `summary.json`: machine-readable aggregate results.
 
+Audit candidate losses after a run:
+
+```powershell
+& 'C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  tools\barricade_backtest\audit_losses.py `
+  backtest_runs\mcts-v3-candidate-12 `
+  --engine-name candidate `
+  --time 0.05 `
+  --depth 3
+```
+
+The audit writes `loss_audit.json` and `loss_audit.md` with suspect decisions,
+alpha-beta counterfactual moves, regret scores, distance deltas, phase labels,
+and tactical reason tags.
+
 ## How It Works
 
 In `api` mode, each game calls:
@@ -85,7 +100,12 @@ mode for verifying that the deployed service still matches expected behavior.
 
 ## Recent Verification
 
-The latest promoted project version is `2026.06.04.07`.
+The latest promoted project version is `2026.06.04.08`.
+
+Version `2026.06.04.08` adds `audit_losses.py` for loss decision audits. A full
+audit of `backtest_runs/mcts-v3-candidate-12` reviewed 6 candidate losses. The
+top pattern was low-wall race regression: MCTS stepped away from goal while
+alpha-beta preferred forward progress.
 
 Version `2026.06.04.07` adds the AI real-time analysis visualization and
 explainability payload to `/api/analyze`. The production search model remains

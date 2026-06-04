@@ -3,6 +3,7 @@ import unittest
 import barricade_mcts as mcts
 import barricade_trainer as b
 import barricade_web as web
+from tools.barricade_backtest import audit_losses
 
 
 class BarricadeTrainerTests(unittest.TestCase):
@@ -132,6 +133,14 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertGreaterEqual(len(analysis["candidates"]), 1)
         self.assertIn("action", analysis["candidates"][0])
         self.assertIn("strategy", analysis)
+
+    def test_loss_audit_helpers_identify_side_and_distance_delta(self):
+        record = {"red_engine": "candidate", "blue_engine": "baseline"}
+        self.assertEqual(audit_losses.audited_side_for_game(record, "candidate"), "red")
+        state = b.state_from_history("e2 e8 e3 e7")
+        my_delta, opp_delta = audit_losses.distance_delta(state, "e4", state.turn)
+        self.assertEqual(my_delta, 1)
+        self.assertEqual(opp_delta, 0)
 
     def test_blue_preserves_last_walls_when_race_is_winning(self):
         history = (

@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.04.09`
+Current project version: `2026.06.04.10`
 
 The tool supports two execution modes:
 
@@ -100,7 +100,10 @@ mode for verifying that the deployed service still matches expected behavior.
 
 ## Recent Verification
 
-The latest promoted project version is `2026.06.04.09`.
+The latest promoted project version is `2026.06.04.10`.
+
+Version `2026.06.04.10` tightens the AI page responsive breakpoint and board
+height cap so the board is not clipped on mid-width desktop browsers.
 
 Version `2026.06.04.09` fixes the `ai.html` UI layout so the board and realtime
 analysis panel remain readable on desktop and narrower browser widths.

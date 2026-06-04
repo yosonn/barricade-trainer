@@ -304,3 +304,23 @@ Verification:
 - Browser automation was attempted but blocked by the in-app browser sandbox
   startup failure, so rendered screenshot validation still needs a live reload
   check after deploy.
+
+## 2026.06.04.10 AI Layout Clip Fix Segment
+
+This segment addresses the remaining deployed UI issue where the board lower
+half could still be clipped around 1400px-wide desktop browser windows.
+
+Changes:
+
+- Raised AI responsive breakpoint from 1280px to 1500px so the crowded layout
+  stacks earlier.
+- Enabled vertical page scrolling for `body:has(.ai-app)` inside that breakpoint.
+- Reduced AI board height cap from `100vh - 245px` to `100vh - 330px`.
+- Applied the same safer cap to the realtime analysis rail.
+
+Verification:
+
+- 28 Python unit tests passed.
+- `node --check` passed for `ai.js` and `app.js`.
+- Local HTTP smoke verified `ai.html`, `app.css`, and `/api/analyze` expose
+  version `2026.06.04.10` and the new CSS rules.

@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.04.09
+## Current Status: 2026.06.04.10
 
 The production web/API backend still uses the tuned alpha-beta search in
 `barricade_trainer.py`. MCTS remains an experimental candidate backend, enabled
@@ -28,6 +28,10 @@ Version `2026.06.04.09` fixes the AI battle UI layout after the realtime
 analysis panel was added. The board now stays top-aligned and scales to the
 available viewport height, while the analysis rail and candidate list scroll
 inside their own containers instead of pushing the board out of view.
+
+Version `2026.06.04.10` tightens the AI page responsive breakpoint for browser
+windows around 1400px wide and allows AI pages to scroll vertically, fixing the
+remaining issue where the lower half of the board could be clipped.
 
 Latest extended result: alpha-beta depth 3 vs MCTS 80 simulations, 20 games,
 candidate 50%, baseline 50%, errors 0. A parameter sweep found promising

@@ -670,7 +670,7 @@ details .button-row,
 }
 
 .ai-app .board {
-  width: min(100%, calc(100vh - 245px), 560px);
+  width: min(100%, calc(100vh - 330px), 520px);
   max-width: 100%;
   justify-self: center;
 }
@@ -691,7 +691,7 @@ details .button-row,
 .ai-insight-rail {
   align-content: start;
   gap: 12px;
-  max-height: calc(100vh - 245px);
+  max-height: calc(100vh - 330px);
   overflow: auto;
 }
 
@@ -826,7 +826,11 @@ details .button-row,
   }
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1500px) {
+  body:has(.ai-app) {
+    overflow: auto;
+  }
+
   .ai-app {
     height: auto;
     min-height: 100vh;

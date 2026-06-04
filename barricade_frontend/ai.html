@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Barricade AI 對戰</title>
-    <link rel="stylesheet" href="/app.css?v=2026.06.04.10">
+    <link rel="stylesheet" href="/app.css?v=2026.06.04.11">
   </head>
   <body>
     <main class="app ai-app">
@@ -12,7 +12,7 @@
         <header class="top">
           <div>
             <h1>Barricade AI 對戰</h1>
-            <small class="app-version">版本 2026.06.04.10</small>
+            <small class="app-version">版本 2026.06.04.11</small>
             <p>玩家對電腦 / 上下 AI 對戰 / 雙電腦互玩 / 賽後回放</p>
             <p><a class="top-link" href="/">回到訓練器</a></p>
           </div>
@@ -52,35 +52,10 @@
             <p>玩家回合可以點棋盤移動，或把牆拖到棋盤上放置。</p>
           </div>
           <div class="board" id="board" aria-label="棋盤"></div>
-          <div class="board-rail ai-insight-rail">
-            <h2>AI 即時分析</h2>
-            <p id="modeHint">AI 會依照目前局面即時更新策略判讀。</p>
-            <div class="analysis-grid">
-              <div>
-                <span>決策方</span>
-                <strong id="analysisSide">-</strong>
-              </div>
-              <div>
-                <span>局勢</span>
-                <strong id="analysisVerdict">-</strong>
-              </div>
-              <div>
-                <span>搜尋</span>
-                <strong id="analysisSearch">-</strong>
-              </div>
-              <div>
-                <span>評分</span>
-                <strong id="analysisScore">-</strong>
-              </div>
-            </div>
-            <div class="analysis-section">
-              <h3>策略判讀</h3>
-              <ul id="strategyList" class="strategy-list"></ul>
-            </div>
-            <div class="analysis-section">
-              <h3>候選走法</h3>
-              <div id="candidateList" class="candidate-list"></div>
-            </div>
+          <div class="board-rail">
+            <h2>目前提示</h2>
+            <p id="modeHint">玩家回合可直接操作棋盤；電腦回合使用同一套後端演算法。</p>
+            <p>雙電腦模式會依照搜尋秒數與最大深度自動下完。</p>
           </div>
         </div>
       </section>
@@ -169,6 +144,6 @@
         </details>
       </aside>
     </main>
-    <script src="/ai.js?v=2026.06.04.10"></script>
+    <script src="/ai.js?v=2026.06.04.11"></script>
   </body>
 </html>

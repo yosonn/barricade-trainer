@@ -324,3 +324,26 @@ Verification:
 - `node --check` passed for `ai.js` and `app.js`.
 - Local HTTP smoke verified `ai.html`, `app.css`, and `/api/analyze` expose
   version `2026.06.04.10` and the new CSS rules.
+
+## 2026.06.04.11 AI Layout Restore Segment
+
+Production backend remains alpha-beta. This segment restores the original AI
+battle page layout because the realtime analysis panel made the interface harder
+to use.
+
+Changes:
+
+- Removed the visible `AI 即時分析` rail from `ai.html`.
+- Restored the simpler right-side board rail with `目前提示` copy.
+- Removed frontend rendering for analysis candidate cards from `ai.js`.
+- Removed the analysis-specific compressed layout and scrolling CSS from
+  `app.css`.
+- Bumped app/cache version to `2026.06.04.11`.
+
+Verification:
+
+- Run syntax checks for `ai.js`, `app.js`, and `barricade_web.py`.
+- Run the Python unit test suite.
+- Local HTTP smoke should confirm `ai.html`, `app.css`, and `/api/analyze`
+  expose version `2026.06.04.11`, `ai.html` contains `目前提示`, and the visible
+  analysis panel is absent.

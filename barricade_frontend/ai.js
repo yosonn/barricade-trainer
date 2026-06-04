@@ -30,12 +30,6 @@ const redTimeLimit = document.querySelector("#redTimeLimit");
 const redDepthLimit = document.querySelector("#redDepthLimit");
 const blueTimeLimit = document.querySelector("#blueTimeLimit");
 const blueDepthLimit = document.querySelector("#blueDepthLimit");
-const analysisSide = document.querySelector("#analysisSide");
-const analysisVerdict = document.querySelector("#analysisVerdict");
-const analysisSearch = document.querySelector("#analysisSearch");
-const analysisScore = document.querySelector("#analysisScore");
-const strategyList = document.querySelector("#strategyList");
-const candidateList = document.querySelector("#candidateList");
 
 let mode = "human";
 let humanSide = "red";
@@ -249,7 +243,6 @@ function render(state) {
   autoBtn.disabled = Boolean(state.winner) || replayIndex !== null;
   undoBtn.disabled = historyTokens().length === 0 || replayIndex !== null;
   updateModeText(state, humanTurn);
-  renderAnalysis(state);
   drawBoard(state);
 }
 
@@ -271,72 +264,6 @@ function updateModeText(state, humanTurn) {
   else if (mode === "auto") statusText.textContent = "\u96d9\u96fb\u8166\u6a21\u5f0f\uff0c\u53ef\u4ee5\u6309\u958b\u59cb\u81ea\u52d5\u5c0d\u6230\u3002";
   else if (humanTurn) statusText.textContent = "\u8f2a\u5230\u73a9\u5bb6\uff0c\u53ef\u4ee5\u8f38\u5165\u4ee3\u78bc\u3001\u9ede\u68cb\u76e4\u6216\u62d6\u66f3\u653e\u7246\u3002";
   else statusText.textContent = `\u8f2a\u5230\u96fb\u8166${sideName(state.turn)}\uff0c\u53ef\u4ee5\u6309\u96fb\u8166\u8d70\u4e00\u6b65\u6216\u958b\u59cb\u81ea\u52d5\u3002`;
-}
-
-function formatSigned(value) {
-  const number = Number(value || 0);
-  if (number > 0) return `+${number}`;
-  return String(number);
-}
-
-function renderAnalysis(state) {
-  const analysis = state.analysis || {};
-  analysisSide.textContent = analysis.perspective ? sideName(analysis.perspective) : "-";
-  analysisVerdict.textContent = analysis.verdict || "-";
-  analysisSearch.textContent = analysis.searched_depth === null || analysis.searched_depth === undefined
-    ? `depth ${analysis.depth_limit ?? "-"}`
-    : `depth ${analysis.searched_depth}/${analysis.depth_limit ?? "-"}`;
-  analysisScore.textContent = Number.isFinite(Number(analysis.score))
-    ? Number(analysis.score).toFixed(1)
-    : "-";
-
-  strategyList.innerHTML = "";
-  const strategy = analysis.strategy || [];
-  if (!strategy.length) {
-    const item = document.createElement("li");
-    item.textContent = "\u7b49\u5f85 AI \u5206\u6790\u8cc7\u6599\u3002";
-    strategyList.appendChild(item);
-  } else {
-    strategy.forEach((note) => {
-      const item = document.createElement("li");
-      item.textContent = note;
-      strategyList.appendChild(item);
-    });
-  }
-
-  candidateList.innerHTML = "";
-  const candidates = analysis.candidates || [];
-  if (!candidates.length) {
-    const empty = document.createElement("div");
-    empty.className = "candidate-card muted";
-    empty.textContent = "\u76ee\u524d\u6c92\u6709\u5019\u9078\u8d70\u6cd5\u3002";
-    candidateList.appendChild(empty);
-    return;
-  }
-
-  candidates.forEach((candidate, index) => {
-    const card = document.createElement("div");
-    const isBest = candidate.action === state.recommendation || index === 0;
-    card.className = `candidate-card${isBest ? " best" : ""}`;
-    const title = document.createElement("div");
-    title.className = "candidate-title";
-    title.innerHTML = `<b>${index + 1}. ${candidate.action}</b><span>${candidate.kind === "wall" ? "\u653e\u7246" : "\u79fb\u52d5"}</span>`;
-
-    const metrics = document.createElement("div");
-    metrics.className = "candidate-metrics";
-    metrics.innerHTML = [
-      `<span>\u5206\u6578 ${Number(candidate.score).toFixed(1)}</span>`,
-      `<span>\u6211\u65b9\u8ddd\u96e2 ${formatSigned(candidate.my_distance_delta)}</span>`,
-      `<span>\u5c0d\u624b\u8ddd\u96e2 ${formatSigned(candidate.opponent_distance_delta)}</span>`,
-    ].join("");
-
-    const reasons = document.createElement("p");
-    reasons.textContent = (candidate.reasons || []).join("\uff0c") || "\u7dad\u6301\u76ee\u524d\u5c40\u9762\u7bc0\u594f";
-    card.appendChild(title);
-    card.appendChild(metrics);
-    card.appendChild(reasons);
-    candidateList.appendChild(card);
-  });
 }
 
 function drawBoard(state) {

@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.04.10
+## Current Status: 2026.06.04.11
 
 The production web/API backend still uses the tuned alpha-beta search in
 `barricade_trainer.py`. MCTS remains an experimental candidate backend, enabled
@@ -14,10 +14,15 @@ New backtest options:
 - `--baseline-simulations`
 - `--candidate-simulations`
 
-Version `2026.06.04.07` replaces the old "current hint" area in `ai.html` with
-an AI real-time analysis visualization. The `/api/analyze` response now includes
-an `analysis` block with engine name, side-to-move perspective, verdict,
-strategy notes, and ranked candidate moves with tactical reasons.
+Version `2026.06.04.11` restores the original AI battle page layout and removes
+the realtime analysis panel from the visible UI. The right board rail is back to
+the simpler "current hint" panel, and the board/control layout no longer uses
+the compressed analysis-specific CSS from versions `.09`/`.10`.
+
+Version `2026.06.04.07` added an AI real-time analysis visualization. The
+`/api/analyze` response still includes an `analysis` block for tooling, but the
+production `ai.html` interface no longer displays that panel as of
+`2026.06.04.11`.
 
 Version `2026.06.04.08` adds a loss decision audit tool:
 `tools/barricade_backtest/audit_losses.py`. It reads backtest `games.jsonl`

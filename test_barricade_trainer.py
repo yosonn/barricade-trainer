@@ -1,5 +1,6 @@
 import unittest
 
+import barricade_mcts as mcts
 import barricade_trainer as b
 import barricade_web as web
 
@@ -195,6 +196,19 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(state.red_walls + state.blue_walls, 3)
         best, _, _ = b.search_best(state, time_limit=0.2, max_depth=4)
         self.assertEqual(best, "b3")
+
+    def test_mcts_recommends_legal_opening_action(self):
+        state = b.state_from_history("e2 e8 e3 e7")
+        best, _, simulations = mcts.search_mcts(state, time_limit=0.05, simulations=30, seed=7)
+        self.assertIn(best, b.ordered_actions(state))
+        self.assertGreater(simulations, 0)
+
+    def test_mcts_takes_immediate_win(self):
+        state = b.State(red=b.text_to_coord("e8"), blue=b.text_to_coord("a9"), turn="red")
+        best, score, simulations = mcts.search_mcts(state, time_limit=0.01, simulations=5)
+        self.assertEqual(best, "e9")
+        self.assertEqual(score, 100000.0)
+        self.assertEqual(simulations, 0)
 
 
 if __name__ == "__main__":

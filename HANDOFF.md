@@ -166,3 +166,27 @@ cd C:\Yoson\BarricadeTrainer
 - 針對 `587be6e` 類 corridor endgame 建立更多回歸局面。
 - 對零牆終局加入更嚴格的 pawn-race solver。
 - 調整勝率估計，目前仍是 heuristic score 映射，不是嚴格勝率。
+## 2026.06.04.04 MCTS-lite Segment
+
+Current segment implemented the first practical AlphaGo/AlphaZero-inspired
+piece: an experimental MCTS-lite backend. It does not replace the production
+alpha-beta AI yet. It gives the project a measurable playground for policy
+priors, value estimates, rollout strategy, and future self-play data.
+
+Changes:
+
+- Added `barricade_mcts.py`.
+- Added backtest engine switches: `--baseline-engine`, `--candidate-engine`,
+  `--baseline-simulations`, and `--candidate-simulations`.
+- Added MCTS unit coverage for legal opening selection and immediate win.
+
+Verification:
+
+- 24 Python unit tests passed.
+- MCTS-lite smoke tournament passed with errors 0.
+- Smoke result: alpha-beta depth 3 vs MCTS-lite 80 simulations, 6 games,
+  candidate 50%, baseline 50%.
+
+Next recommended segment: improve MCTS priors with tactical/race features,
+add rollout/value calibration, then rerun larger cross-model tournaments before
+promoting it over alpha-beta.

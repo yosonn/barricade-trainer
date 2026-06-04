@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.04.03`
+Current project version: `2026.06.04.04`
 
 The tool supports two execution modes:
 
@@ -23,6 +23,22 @@ Run the same tournament entirely inside the local repo:
 ```powershell
 & 'C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
   tools\barricade_backtest\backtest_loop.py --mode local --games 10 --baseline-depth 2 --candidate-depth 3 --time 0.05
+```
+
+Compare the normal alpha-beta backend against the experimental MCTS-lite
+backend:
+
+```powershell
+& 'C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  tools\barricade_backtest\backtest_loop.py `
+  --mode local `
+  --games 6 `
+  --time 0.05 `
+  --baseline-engine alpha-beta `
+  --baseline-depth 3 `
+  --candidate-engine mcts `
+  --candidate-simulations 80 `
+  --fail-on-errors
 ```
 
 Use it as a CI gate:
@@ -69,9 +85,17 @@ mode for verifying that the deployed service still matches expected behavior.
 
 ## Recent Verification
 
-The latest promoted backend version is `2026.06.04.03`.
+The latest promoted backend version is `2026.06.04.04`.
 
-- Unit tests: 22 passed.
+Version `2026.06.04.04` adds an experimental `barricade_mcts.py` backend and
+backtest switches for `--baseline-engine` / `--candidate-engine`. MCTS-lite uses
+the current alpha-beta move ordering as policy priors, PUCT-style selection, and
+static evaluation as a value estimate. It is useful for AlphaGo/AlphaZero-style
+experiments, but it is not promoted as stronger than alpha-beta yet.
+
+- Unit tests: 24 passed.
+- MCTS-lite smoke tournament: alpha-beta depth 3 vs MCTS-lite 80 simulations,
+  6 games, candidate win rate 50%, errors 0.
 - Local baseline tournament: candidate depth 3 vs baseline depth 2, 30 games,
   candidate win rate 80%, errors 0.
 - Historical synthesis tournament: the worktree synthesis engine vs 8 historical

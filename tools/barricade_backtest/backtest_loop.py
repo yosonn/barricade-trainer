@@ -21,6 +21,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import barricade_trainer as engine
+import barricade_mcts
 import barricade_web as web
 
 
@@ -32,6 +33,8 @@ class EngineConfig:
     name: str
     depth: int
     time_limit: float
+    kind: str = "alpha-beta"
+    simulations: int = 200
 
 
 @dataclass
@@ -102,17 +105,39 @@ class LocalEngineClient:
         joined_history = " ".join(history)
         state = engine.state_from_history(joined_history, start_turn=start_turn)
         avoid_actions = web.recent_reversal_avoid_actions(joined_history, start_turn)
+        recommendation = None
+        score = None
+        searched_depth = None
+        if state.turn == side_to_optimize:
+            if config.kind == "mcts":
+                recommendation, score, searched_depth = barricade_mcts.search_mcts(
+                    state,
+                    time_limit=config.time_limit,
+                    simulations=config.simulations,
+                    seed=len(history),
+                )
+            else:
+                recommendation, score, searched_depth = engine.search_best(
+                    state,
+                    time_limit=config.time_limit,
+                    max_depth=config.depth,
+                    avoid_actions=avoid_actions,
+                )
+        payload = web.state_payload(
+            state,
+            user_side=side_to_optimize,
+            search_time=config.time_limit,
+            depth=config.depth,
+            recommend_for_turn=False,
+            start_turn=start_turn,
+            avoid_actions=avoid_actions,
+        )
+        payload["recommendation"] = recommendation
+        payload["score"] = score
+        payload["searched_depth"] = searched_depth
         return {
             "ok": True,
-            "state": web.state_payload(
-                state,
-                user_side=side_to_optimize,
-                search_time=config.time_limit,
-                depth=config.depth,
-                recommend_for_turn=True,
-                start_turn=start_turn,
-                avoid_actions=avoid_actions,
-            ),
+            "state": payload,
         }
 
 
@@ -357,6 +382,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--candidate-time", type=float)
     parser.add_argument("--baseline-depth", type=int, default=2)
     parser.add_argument("--candidate-depth", type=int, default=3)
+    parser.add_argument("--baseline-engine", choices=("alpha-beta", "mcts"), default="alpha-beta")
+    parser.add_argument("--candidate-engine", choices=("alpha-beta", "mcts"), default="alpha-beta")
+    parser.add_argument("--baseline-simulations", type=int, default=200)
+    parser.add_argument("--candidate-simulations", type=int, default=200)
     parser.add_argument("--exploration", type=float, default=0.0, help="Chance to choose a random legal move.")
     parser.add_argument("--pause-sec", type=float, default=0.0, help="Pause between plies to reduce server load.")
     parser.add_argument("--out-dir", type=Path)
@@ -378,11 +407,15 @@ def main(argv: list[str]) -> int:
         name="baseline",
         depth=args.baseline_depth,
         time_limit=args.baseline_time if args.baseline_time is not None else args.time,
+        kind=args.baseline_engine,
+        simulations=args.baseline_simulations,
     )
     candidate = EngineConfig(
         name="candidate",
         depth=args.candidate_depth,
         time_limit=args.candidate_time if args.candidate_time is not None else args.time,
+        kind=args.candidate_engine,
+        simulations=args.candidate_simulations,
     )
     client: BarricadeApiClient | LocalEngineClient
     if args.mode == "local":

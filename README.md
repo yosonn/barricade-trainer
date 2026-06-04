@@ -1,5 +1,24 @@
 # Barricade Trainer
 
+## Current Status: 2026.06.04.04
+
+This release adds an experimental MCTS-lite backend for AlphaGo/AlphaZero-style
+research. The production AI still uses the tuned alpha-beta backend, while
+`barricade_mcts.py` is available through the backtest tool for controlled
+candidate-vs-baseline tournaments.
+
+New backtest options:
+
+- `--baseline-engine alpha-beta|mcts`
+- `--candidate-engine alpha-beta|mcts`
+- `--baseline-simulations`
+- `--candidate-simulations`
+
+Latest MCTS-lite smoke result: alpha-beta depth 3 vs MCTS-lite 80 simulations,
+6 games, candidate 50%, baseline 50%, errors 0. Conclusion: the MCTS path is
+legal and ready for iterative policy-prior / rollout / self-play improvements,
+but it is not yet proven stronger than the tuned alpha-beta backend.
+
 版本：2026.06.04.03
 
 GitHub：<https://github.com/yosonn/barricade-trainer>

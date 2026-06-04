@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.04.05
+## Current Status: 2026.06.04.06
 
 The production web/API backend still uses the tuned alpha-beta search in
 `barricade_trainer.py`. MCTS remains an experimental candidate backend, enabled
@@ -14,9 +14,11 @@ New backtest options:
 - `--baseline-simulations`
 - `--candidate-simulations`
 
-Latest MCTS v2 smoke result: alpha-beta depth 3 vs MCTS 80 simulations, 6 games,
-candidate 83.33%, baseline 16.67%, errors 0. This version adds tactical policy
-priors, short rollout value, and root avoid-action fallback.
+Latest extended result: alpha-beta depth 3 vs MCTS 80 simulations, 20 games,
+candidate 50%, baseline 50%, errors 0. A parameter sweep found promising
+6-game settings, but the best-looking candidate also returned to 50% over a
+12-game confirmation run. Conclusion: MCTS is stable as an experimental backend,
+but alpha-beta remains the production backend.
 
 版本：2026.06.04.03
 

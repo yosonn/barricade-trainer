@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.04.05`
+Current project version: `2026.06.04.06`
 
 The tool supports two execution modes:
 
@@ -85,7 +85,21 @@ mode for verifying that the deployed service still matches expected behavior.
 
 ## Recent Verification
 
-The latest promoted backend version is `2026.06.04.05`.
+The latest promoted project version is `2026.06.04.06`.
+
+Version `2026.06.04.06` improves tournament diagnostics and MCTS tuning
+controls. Summary output now includes engine-side results, and CLI flags expose
+MCTS `max_actions`, `rollout_depth`, and exploration constants for both baseline
+and candidate engines.
+
+- Extended MCTS v2 tournament: alpha-beta depth 3 vs MCTS 80 simulations,
+  20 games, candidate 50%, baseline 50%, errors 0.
+- Parameter sweep best short sample: rollout depth 2, max actions 20,
+  simulations 120, 6 games, candidate 100%, errors 0.
+- Confirmation run for that setting: 12 games, candidate 50%, baseline 50%,
+  errors 0.
+- Decision: do not promote MCTS to production yet; keep alpha-beta as the web/API
+  backend.
 
 Version `2026.06.04.05` improves the experimental MCTS path with tactical
 policy priors, short rollout value, and root avoid-action fallback. The web/API

@@ -35,6 +35,9 @@ class EngineConfig:
     time_limit: float
     kind: str = "alpha-beta"
     simulations: int = 200
+    max_actions: int = 16
+    rollout_depth: int = 2
+    mcts_exploration: float = 1.35
 
 
 @dataclass
@@ -114,6 +117,9 @@ class LocalEngineClient:
                     state,
                     time_limit=config.time_limit,
                     simulations=config.simulations,
+                    max_actions=config.max_actions,
+                    exploration=config.mcts_exploration,
+                    rollout_depth=config.rollout_depth,
                     avoid_actions=avoid_actions,
                     seed=len(history),
                 )
@@ -254,10 +260,24 @@ def summarize(
     wins = {baseline.name: 0, candidate.name: 0, "draw_or_none": 0}
     terminal_reasons: dict[str, int] = {}
     side_wins = {"red": 0, "blue": 0, "none": 0}
+    engine_side_results: dict[str, dict[str, int]] = {
+        f"{baseline.name}_as_red": {"wins": 0, "games": 0},
+        f"{baseline.name}_as_blue": {"wins": 0, "games": 0},
+        f"{candidate.name}_as_red": {"wins": 0, "games": 0},
+        f"{candidate.name}_as_blue": {"wins": 0, "games": 0},
+    }
 
     for record in records:
         terminal_reasons[record.terminal_reason] = terminal_reasons.get(record.terminal_reason, 0) + 1
         side_wins[record.winner or "none"] = side_wins.get(record.winner or "none", 0) + 1
+        red_key = f"{record.red_engine}_as_red"
+        blue_key = f"{record.blue_engine}_as_blue"
+        engine_side_results.setdefault(red_key, {"wins": 0, "games": 0})["games"] += 1
+        engine_side_results.setdefault(blue_key, {"wins": 0, "games": 0})["games"] += 1
+        if record.winner == "red":
+            engine_side_results[red_key]["wins"] += 1
+        elif record.winner == "blue":
+            engine_side_results[blue_key]["wins"] += 1
         if record.winner_engine in (baseline.name, candidate.name):
             wins[record.winner_engine] += 1
         else:
@@ -279,6 +299,7 @@ def summarize(
         "baseline_win_rate": round(wins[baseline.name] / total * 100, 2),
         "draw_or_none_rate": round(wins["draw_or_none"] / total * 100, 2),
         "side_wins": side_wins,
+        "engine_side_results": engine_side_results,
         "terminal_reasons": terminal_reasons,
         "error_games": error_games,
         "avg_plies": round(statistics.mean(plies), 2) if plies else 0,
@@ -317,8 +338,16 @@ def render_markdown(summary: dict[str, Any], records: list[GameRecord]) -> str:
         "",
         "## Engines",
         "",
-        f"- Baseline: depth={summary['baseline']['depth']}, time={summary['baseline']['time_limit']}",
-        f"- Candidate: depth={summary['candidate']['depth']}, time={summary['candidate']['time_limit']}",
+        (
+            f"- Baseline: kind={summary['baseline']['kind']}, depth={summary['baseline']['depth']}, "
+            f"time={summary['baseline']['time_limit']}, simulations={summary['baseline']['simulations']}, "
+            f"max_actions={summary['baseline']['max_actions']}, rollout_depth={summary['baseline']['rollout_depth']}"
+        ),
+        (
+            f"- Candidate: kind={summary['candidate']['kind']}, depth={summary['candidate']['depth']}, "
+            f"time={summary['candidate']['time_limit']}, simulations={summary['candidate']['simulations']}, "
+            f"max_actions={summary['candidate']['max_actions']}, rollout_depth={summary['candidate']['rollout_depth']}"
+        ),
         "",
         "## Source",
         "",
@@ -338,6 +367,12 @@ def render_markdown(summary: dict[str, Any], records: list[GameRecord]) -> str:
     lines.extend(["", "## Side Wins", ""])
     for side, count in sorted(summary["side_wins"].items()):
         lines.append(f"- {side}: {count}")
+
+    lines.extend(["", "## Engine Side Results", ""])
+    for key, result in sorted(summary["engine_side_results"].items()):
+        games = result["games"] or 1
+        rate = round(result["wins"] / games * 100, 2)
+        lines.append(f"- {key}: {result['wins']}/{result['games']} ({rate}%)")
 
     lines.extend(["", "## Notable Games", ""])
     for record in notable:
@@ -387,6 +422,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--candidate-engine", choices=("alpha-beta", "mcts"), default="alpha-beta")
     parser.add_argument("--baseline-simulations", type=int, default=200)
     parser.add_argument("--candidate-simulations", type=int, default=200)
+    parser.add_argument("--baseline-max-actions", type=int, default=16)
+    parser.add_argument("--candidate-max-actions", type=int, default=16)
+    parser.add_argument("--baseline-rollout-depth", type=int, default=2)
+    parser.add_argument("--candidate-rollout-depth", type=int, default=2)
+    parser.add_argument("--baseline-mcts-exploration", type=float, default=1.35)
+    parser.add_argument("--candidate-mcts-exploration", type=float, default=1.35)
     parser.add_argument("--exploration", type=float, default=0.0, help="Chance to choose a random legal move.")
     parser.add_argument("--pause-sec", type=float, default=0.0, help="Pause between plies to reduce server load.")
     parser.add_argument("--out-dir", type=Path)
@@ -410,6 +451,9 @@ def main(argv: list[str]) -> int:
         time_limit=args.baseline_time if args.baseline_time is not None else args.time,
         kind=args.baseline_engine,
         simulations=args.baseline_simulations,
+        max_actions=args.baseline_max_actions,
+        rollout_depth=args.baseline_rollout_depth,
+        mcts_exploration=args.baseline_mcts_exploration,
     )
     candidate = EngineConfig(
         name="candidate",
@@ -417,6 +461,9 @@ def main(argv: list[str]) -> int:
         time_limit=args.candidate_time if args.candidate_time is not None else args.time,
         kind=args.candidate_engine,
         simulations=args.candidate_simulations,
+        max_actions=args.candidate_max_actions,
+        rollout_depth=args.candidate_rollout_depth,
+        mcts_exploration=args.candidate_mcts_exploration,
     )
     client: BarricadeApiClient | LocalEngineClient
     if args.mode == "local":

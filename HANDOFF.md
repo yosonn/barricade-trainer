@@ -210,3 +210,32 @@ Verification:
 - 26 Python unit tests passed.
 - MCTS v2 smoke: alpha-beta depth 3 vs MCTS 80 simulations, 6 games, candidate
   83.33%, baseline 16.67%, errors 0.
+
+## 2026.06.04.06 Tournament Diagnostics Segment
+
+Production backend remains alpha-beta. This segment focused on making MCTS
+optimization harder to fool with short samples.
+
+Changes:
+
+- Backtest summary now includes `engine_side_results`.
+- Backtest markdown now prints engine kind, simulations, max actions, and
+  rollout depth.
+- CLI now exposes MCTS tuning controls for baseline and candidate engines:
+  `--baseline-max-actions`, `--candidate-max-actions`,
+  `--baseline-rollout-depth`, `--candidate-rollout-depth`,
+  `--baseline-mcts-exploration`, and `--candidate-mcts-exploration`.
+
+Results:
+
+- 20-game extended test, alpha-beta depth 3 vs MCTS 80 simulations: candidate
+  50%, baseline 50%, errors 0.
+- Four short 6-game sweep configs ranged from 66.67% to 100% candidate win rate.
+- Best short config was rollout depth 2, max actions 20, simulations 120, but a
+  12-game confirmation returned to 50% / 50%.
+
+Decision:
+
+- Do not promote MCTS to production yet.
+- Next useful step is a larger automated tuning harness or game-position audit
+  that explains where MCTS diverges from alpha-beta in its losses.

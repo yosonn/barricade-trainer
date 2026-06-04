@@ -12,7 +12,7 @@ import barricade_trainer as engine
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
-APP_VERSION = "2026.06.04.06"
+APP_VERSION = "2026.06.04.07"
 
 
 def win_rate_from_score(score: float) -> float:
@@ -34,6 +34,113 @@ def verdict(score: float, win: str | None, perspective: str) -> str:
     if score <= -350:
         return "\u660e\u986f\u52a3\u52e2"
     return "\u5c40\u52e2\u63a5\u8fd1"
+
+
+def action_analysis(state: engine.State, action: str, perspective: str) -> dict:
+    opp = engine.opponent(perspective)
+    child = engine.apply_action(state, action)
+    my_dist, _ = engine.movement_path(state, perspective)
+    opp_dist, _ = engine.movement_path(state, opp)
+    next_my_dist, _ = engine.movement_path(child, perspective)
+    next_opp_dist, _ = engine.movement_path(child, opp)
+    my_delta = my_dist - next_my_dist
+    opp_delta = next_opp_dist - opp_dist
+    raw_score = engine.action_score(state, action, perspective)
+    reasons: list[str] = []
+
+    if engine.is_pawn_action(action):
+        reasons.append("\u68cb\u5b50\u9032\u653b" if my_delta > 0 else "\u8abf\u6574\u7ad9\u4f4d")
+        if next_my_dist <= 2:
+            reasons.append("\u903c\u8fd1\u7d42\u9ede")
+        if engine.player_has_goal_move(child, opp):
+            reasons.append("\u98a8\u96aa\uff1a\u5c0d\u624b\u4e0b\u6b65\u53ef\u80fd\u5230\u7d42\u9ede")
+    else:
+        reasons.append("\u653e\u7246\u963b\u64cb" if opp_delta > 0 else "\u653e\u7246\u5c0d\u5ef6\u9072\u6548\u679c\u6709\u9650")
+        if opp_delta >= 2:
+            reasons.append("\u660e\u986f\u62c9\u9577\u5c0d\u624b\u8def\u5f91")
+        if my_delta < 0:
+            reasons.append("\u4ee3\u50f9\uff1a\u81ea\u5df1\u8def\u5f91\u8b8a\u9577")
+
+    if child.pawn(perspective)[1] == engine.GOAL_ROW[perspective]:
+        reasons.insert(0, "\u7acb\u5373\u52dd\u5229")
+    if not reasons:
+        reasons.append("\u4fdd\u6301\u5c40\u9762\u5e73\u8861")
+
+    return {
+        "action": action,
+        "kind": "pawn" if engine.is_pawn_action(action) else "wall",
+        "score": round(raw_score, 1),
+        "my_distance_delta": my_delta,
+        "opponent_distance_delta": opp_delta,
+        "my_distance_after": next_my_dist,
+        "opponent_distance_after": next_opp_dist,
+        "reasons": reasons[:3],
+    }
+
+
+def strategy_summary(state: engine.State, perspective: str, state_score: float) -> list[str]:
+    opp = engine.opponent(perspective)
+    my_dist, _ = engine.movement_path(state, perspective)
+    opp_dist, _ = engine.movement_path(state, opp)
+    my_walls = state.walls_left(perspective)
+    opp_walls = state.walls_left(opp)
+    notes: list[str] = []
+
+    if my_dist < opp_dist:
+        notes.append("\u8def\u5f91\u9818\u5148\uff1a\u512a\u5148\u4fdd\u6301\u524d\u9032\u7bc0\u594f")
+    elif my_dist > opp_dist:
+        notes.append("\u8def\u5f91\u843d\u5f8c\uff1a\u9700\u8981\u627e\u5ef6\u9072\u7246\u6216\u5f37\u5236\u8df3\u9ede")
+    else:
+        notes.append("\u8def\u5f91\u76f8\u8fd1\uff1a\u6c7a\u7b56\u91cd\u9ede\u5728 tempo \u8207\u7246\u8cc7\u6e90")
+
+    if my_walls <= 1:
+        notes.append("\u7246\u8cc7\u6e90\u4f4e\uff1a\u4e0d\u5b9c\u8f15\u6613\u82b1\u6389\u6700\u5f8c\u9632\u5b88")
+    elif opp_walls <= 1:
+        notes.append("\u5c0d\u624b\u7246\u5c11\uff1a\u53ef\u8003\u616e\u76f4\u63a5\u8f49\u6210\u7d42\u5c40\u885d\u523a")
+
+    if engine.player_has_goal_move(state, opp):
+        notes.append("\u9ad8\u98a8\u96aa\uff1a\u5c0d\u624b\u5df2\u6709\u76f4\u63a5\u5230\u7d42\u9ede\u7684\u5a01\u8105")
+    elif engine.player_has_goal_move(state, perspective):
+        notes.append("\u9032\u653b\u6a5f\u6703\uff1a\u6211\u65b9\u5df2\u63a5\u8fd1\u76f4\u63a5\u7d42\u7d50")
+
+    if abs(state_score) < 180:
+        notes.append("\u5c40\u52e2\u7dca\u8cbc\uff1a\u4efb\u4f55\u4e00\u9762\u597d\u7246\u90fd\u53ef\u6539\u8b8a\u52dd\u8ca0")
+    return notes[:4]
+
+
+def analysis_payload(
+    state: engine.State,
+    search_time: float,
+    depth: int,
+    recommendation: str | None,
+    score: float | None,
+    searched_depth: int | None,
+    avoid_actions: set[str] | None,
+) -> dict:
+    perspective = state.turn
+    opp = engine.opponent(perspective)
+    state_score = engine.static_eval(state, perspective)
+    candidates = [
+        action_analysis(state, action, perspective)
+        for action in engine.ordered_actions(state, limit_walls=18)[:6]
+    ]
+    avoided = sorted(avoid_actions or set())
+    return {
+        "engine": "alpha-beta",
+        "perspective": perspective,
+        "opponent": opp,
+        "search_time": search_time,
+        "depth_limit": depth,
+        "searched_depth": searched_depth,
+        "recommendation": recommendation,
+        "score": round(score if score is not None else state_score, 1),
+        "state_score": round(state_score, 1),
+        "verdict": verdict(state_score, winner(state), perspective),
+        "strategy": strategy_summary(state, perspective, state_score),
+        "candidates": candidates,
+        "avoided_actions": avoided,
+        "path_gap": state.pawn(opp)[1] - state.pawn(perspective)[1],
+    }
 
 
 def state_payload(
@@ -91,6 +198,15 @@ def state_payload(
         "blue_win_rate": win_rate_from_score(blue_score),
         "red_verdict": verdict(red_score, win, "red"),
         "blue_verdict": verdict(blue_score, win, "blue"),
+        "analysis": analysis_payload(
+            state,
+            search_time,
+            depth,
+            recommendation,
+            score,
+            searched_depth,
+            avoid_actions,
+        ),
     }
 
 

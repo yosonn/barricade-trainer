@@ -239,3 +239,24 @@ Decision:
 - Do not promote MCTS to production yet.
 - Next useful step is a larger automated tuning harness or game-position audit
   that explains where MCTS diverges from alpha-beta in its losses.
+
+## 2026.06.04.07 Realtime Analysis UI Segment
+
+Production backend remains alpha-beta. This segment changes the AI battle UI and
+explainability output, not the production search model.
+
+Changes:
+
+- Replaced the old `目前提示` rail in `ai.html` with `AI 即時分析`.
+- `/api/analyze` now returns `state.analysis` with engine, current perspective,
+  verdict, strategy notes, and ranked candidate moves.
+- Candidate move cards show score, distance deltas, move/wall type, and concise
+  tactical reasons.
+- Added responsive styling for the new analysis rail.
+
+Verification:
+
+- 27 Python unit tests passed.
+- `node --check` passed for `ai.js` and `app.js`.
+- Local HTTP smoke verified `ai.html`, `ai.js`, `app.css`, and `/api/analyze`
+  all expose version `2026.06.04.07` analysis assets/data.

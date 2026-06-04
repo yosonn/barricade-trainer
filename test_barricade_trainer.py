@@ -123,6 +123,16 @@ class BarricadeTrainerTests(unittest.TestCase):
         best, _, _ = b.search_best(state, time_limit=0.2, max_depth=2, avoid_actions=avoid)
         self.assertEqual(best, "c4")
 
+    def test_state_payload_includes_realtime_analysis(self):
+        state = b.state_from_history("e2 e8 e3 e7")
+        payload = web.state_payload(state, "red", 0.05, 2, recommend_for_turn=True)
+        analysis = payload["analysis"]
+        self.assertEqual(analysis["engine"], "alpha-beta")
+        self.assertEqual(analysis["perspective"], state.turn)
+        self.assertGreaterEqual(len(analysis["candidates"]), 1)
+        self.assertIn("action", analysis["candidates"][0])
+        self.assertIn("strategy", analysis)
+
     def test_blue_preserves_last_walls_when_race_is_winning(self):
         history = (
             "e2 e8 e3 e7 e4 e6 e5 he8 e7 hd7 f7 e5 g7 hg7 "

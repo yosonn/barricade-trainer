@@ -653,6 +653,10 @@ details .button-row,
   grid-template-rows: auto auto 1fr;
 }
 
+.ai-app .board-shell {
+  grid-template-columns: 190px minmax(360px, 620px) minmax(280px, 360px);
+}
+
 .ai-app .box .side-picker button {
   flex: 1;
 }
@@ -664,4 +668,140 @@ details .button-row,
 
 .ai-mode-picker .seg {
   min-width: 128px;
+}
+
+.ai-insight-rail {
+  align-content: start;
+  gap: 12px;
+}
+
+.ai-insight-rail h2 {
+  color: #f5d06b;
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.analysis-grid div {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #36424d;
+  border-radius: 8px;
+  background: #14191e;
+}
+
+.analysis-grid span {
+  display: block;
+  margin-bottom: 3px;
+  color: #9facb7;
+  font-size: 11px;
+}
+
+.analysis-grid strong {
+  display: block;
+  color: #f4f7f8;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.analysis-section {
+  display: grid;
+  gap: 8px;
+}
+
+.analysis-section h3 {
+  margin: 0;
+  color: #dce6ec;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.strategy-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.strategy-list li {
+  padding: 8px 9px;
+  border-left: 3px solid #f5d06b;
+  border-radius: 7px;
+  background: #151b21;
+  color: #d7e0e6;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.candidate-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(44vh, 430px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.candidate-card {
+  display: grid;
+  gap: 6px;
+  padding: 9px;
+  border: 1px solid #3b4650;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #151b21, #101316);
+}
+
+.candidate-card.best {
+  border-color: #f5d06b;
+  box-shadow: 0 0 0 2px rgba(245, 208, 107, 0.12);
+}
+
+.candidate-card.muted {
+  color: #9facb7;
+}
+
+.candidate-title,
+.candidate-metrics {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.candidate-title b {
+  color: #f5d06b;
+  font-size: 17px;
+}
+
+.candidate-title span,
+.candidate-metrics span {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #25303a;
+  color: #c6d0d8;
+  font-size: 11px;
+}
+
+.candidate-metrics {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.candidate-card p {
+  color: #b8c4cc;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .ai-app .board-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .candidate-list {
+    max-height: none;
+  }
 }

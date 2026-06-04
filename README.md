@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.04.06
+## Current Status: 2026.06.04.07
 
 The production web/API backend still uses the tuned alpha-beta search in
 `barricade_trainer.py`. MCTS remains an experimental candidate backend, enabled
@@ -13,6 +13,11 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.04.07` replaces the old "current hint" area in `ai.html` with
+an AI real-time analysis visualization. The `/api/analyze` response now includes
+an `analysis` block with engine name, side-to-move perspective, verdict,
+strategy notes, and ranked candidate moves with tactical reasons.
 
 Latest extended result: alpha-beta depth 3 vs MCTS 80 simulations, 20 games,
 candidate 50%, baseline 50%, errors 0. A parameter sweep found promising

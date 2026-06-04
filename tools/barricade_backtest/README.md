@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.04.06`
+Current project version: `2026.06.04.07`
 
 The tool supports two execution modes:
 
@@ -85,7 +85,11 @@ mode for verifying that the deployed service still matches expected behavior.
 
 ## Recent Verification
 
-The latest promoted project version is `2026.06.04.06`.
+The latest promoted project version is `2026.06.04.07`.
+
+Version `2026.06.04.07` adds the AI real-time analysis visualization and
+explainability payload to `/api/analyze`. The production search model remains
+alpha-beta.
 
 Version `2026.06.04.06` improves tournament diagnostics and MCTS tuning
 controls. Summary output now includes engine-side results, and CLI flags expose

@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.04.12
+## Current Status: 2026.06.04.13
 
 The production web/API backend still uses the tuned alpha-beta search in
 `barricade_trainer.py`. MCTS remains an experimental candidate backend, enabled
@@ -13,6 +13,13 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.04.13` improves the experimental MCTS backend by reusing the
+alpha-beta race sprint logic inside MCTS candidate filtering, priors, and
+rollouts. Low-wall shortest-path progress can override reversal avoidance, which
+removes the repeated `f5` vs `f7` step-away failure from the top loss-audit
+suspects. Production web/API move selection still remains alpha-beta unless the
+backtest tool explicitly selects `--candidate-engine mcts`.
 
 Version `2026.06.04.12` improves the production alpha-beta backend for pure
 no-wall pawn races. When both sides have no walls and the side to move is not

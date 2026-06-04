@@ -251,6 +251,59 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(score, 100000.0)
         self.assertEqual(simulations, 0)
 
+    def test_mcts_sprints_in_red_no_wall_race(self):
+        state = b.State(
+            red=b.text_to_coord("a4"),
+            blue=b.text_to_coord("a8"),
+            turn="red",
+            red_walls=0,
+            blue_walls=0,
+        )
+        best, _, _ = mcts.search_mcts(
+            state,
+            time_limit=0.05,
+            simulations=40,
+            max_actions=20,
+            seed=17,
+        )
+        self.assertEqual(best, "a5")
+
+    def test_mcts_sprints_in_blue_no_wall_race(self):
+        state = b.State(
+            red=b.text_to_coord("i2"),
+            blue=b.text_to_coord("i6"),
+            turn="blue",
+            red_walls=0,
+            blue_walls=0,
+        )
+        best, _, _ = mcts.search_mcts(
+            state,
+            time_limit=0.05,
+            simulations=40,
+            max_actions=20,
+            seed=19,
+        )
+        self.assertEqual(best, "i5")
+
+    def test_mcts_avoids_low_wall_step_away_from_goal(self):
+        history = (
+            "e2 e8 e3 e7 e4 e6 he2 he4 hd1 hd8 f4 vf3 e4 vd4 "
+            "e3 e5 ve5 hc7 vd6 ha7 ve7 hc2 hb8 vc3 d3 vc5 d4 "
+            "vd2 d5 e6 d6 e7 d7 e8 c7 d8 c6 c8 c5 b8 c4 a8 "
+            "b4 a9 b3 b9 b2 c9 hg1 d9 c2 e9 c1 f9 d1 f8 "
+            "e1 f7 f1 f6 vf5"
+        )
+        state = b.state_from_history(history)
+        best, _, _ = mcts.search_mcts(
+            state,
+            time_limit=0.05,
+            simulations=120,
+            max_actions=20,
+            rollout_depth=2,
+            seed=len(history.split()),
+        )
+        self.assertEqual(best, "f7")
+
     def test_mcts_respects_root_avoid_actions(self):
         state = b.state_from_history("e2 e8 e3 e7")
         forbidden = b.ordered_actions(state)[0]

@@ -373,3 +373,34 @@ Verification:
   final wall.
 - Local backtest smoke, depth3 candidate vs depth2 baseline, 8 games:
   candidate 75%, baseline 25%, errors 0.
+
+## 2026.06.04.13 MCTS Race Prior Segment
+
+Production backend remains alpha-beta. This segment improves the experimental
+MCTS backend after cross-model audits showed repeated low-wall race mistakes
+such as moving away from goal in positions where alpha-beta preferred direct
+progress.
+
+Changes:
+
+- Added MCTS `race_filtered_actions()` to reuse alpha-beta
+  `safe_pawn_race_progress_actions()` during candidate generation.
+- Added `pawn_race_adjustment()` into MCTS policy prior scoring.
+- Allowed low-wall shortest-path progress to override reversal avoidance in
+  MCTS, matching the alpha-beta behavior.
+- Updated MCTS rollout selection to use race-filtered actions.
+- Added MCTS red/blue no-wall sprint regression tests plus the audited `f5` vs
+  `f7` low-wall step-away regression.
+- Bumped app/cache version to `2026.06.04.13`.
+
+Verification:
+
+- `node --check` passed for `ai.js` and `app.js`.
+- `py_compile` passed for `barricade_web.py`, `barricade_trainer.py`, and
+  `barricade_mcts.py`.
+- 33 Python unit tests passed.
+- MCTS 120 / max_actions 20 / rollout depth 2 vs alpha-beta depth 3, 12 games:
+  candidate 58.33%, baseline 41.67%, errors 0.
+- Loss audit no longer reports the repeated `f5` vs `f7` step-away as the top
+  suspect. The next MCTS issue is midgame wall timing, top suspect `hb8` vs
+  `ha7`, regret 204.0.

@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.04.12`
+Current project version: `2026.06.04.13`
 
 The tool supports two execution modes:
 
@@ -100,7 +100,18 @@ mode for verifying that the deployed service still matches expected behavior.
 
 ## Recent Verification
 
-The latest promoted project version is `2026.06.04.12`.
+The latest promoted project version is `2026.06.04.13`.
+
+Version `2026.06.04.13` improves the experimental MCTS backend with low-wall
+race filtering in candidate generation, priors, and rollout selection. Shortest
+path progress can override reversal avoidance, fixing the repeated `f5` vs
+`f7` MCTS loss-audit pattern. This is for backtest-selected MCTS only;
+production web/API play still defaults to alpha-beta.
+
+- Verification: MCTS 120 / max_actions 20 / rollout depth 2 vs alpha-beta depth
+  3, 12 games, candidate 58.33%, baseline 41.67%, errors 0.
+  `f5` vs `f7` no longer appears as the top loss-audit suspect; the next issue
+  is midgame wall timing (`hb8` vs `ha7`).
 
 Version `2026.06.04.12` improves the production alpha-beta backend in no-wall
 endgames. Pure pawn races now prioritize safe shortest-path progress when the

@@ -55,7 +55,58 @@ def action_prior_score(state: engine.State, action: str) -> float:
     after_my = engine.movement_path(child, perspective)[0]
     after_opp = engine.movement_path(child, engine.opponent(perspective))[0]
     race_delta = (before_my - after_my) * 120 + (after_opp - before_opp) * 140
-    return engine.action_score(state, action, perspective) + race_delta
+    race_score = engine.pawn_race_adjustment(state, action, perspective)
+    if (
+        engine.is_pawn_action(action)
+        and state.walls_left(perspective) + state.walls_left(engine.opponent(perspective)) <= 3
+        and after_my > before_my
+    ):
+        race_score -= 800 + (after_my - before_my) * 250
+    return engine.action_score(state, action, perspective) + race_delta + race_score
+
+
+def race_filtered_actions(
+    state: engine.State,
+    max_actions: int,
+    forbidden_actions: set[str] | None = None,
+) -> list[str]:
+    forbidden_actions = forbidden_actions or set()
+    race_actions = engine.safe_pawn_race_progress_actions(state, state.turn)
+    if race_actions:
+        return race_actions[:max_actions]
+
+    perspective = state.turn
+    opp = engine.opponent(perspective)
+    low_wall_race = state.walls_left(perspective) + state.walls_left(opp) <= 3
+    my_dist = engine.movement_path(state, perspective)[0]
+    actions = [
+        action
+        for action in engine.ordered_actions(state, limit_walls=max_actions)
+        if action not in forbidden_actions
+        or (
+            low_wall_race
+            and
+            engine.is_pawn_action(action)
+            and engine.movement_path(engine.apply_action(state, action), perspective)[0] < my_dist
+        )
+    ][:max_actions]
+    if not actions and forbidden_actions:
+        actions = engine.ordered_actions(state, limit_walls=max_actions)[:max_actions]
+    if low_wall_race:
+        progress_pawns = [
+            action for action in actions
+            if engine.is_pawn_action(action)
+            and engine.movement_path(engine.apply_action(state, action), perspective)[0] < my_dist
+        ]
+        if progress_pawns:
+            actions = [
+                action for action in actions
+                if not (
+                    engine.is_pawn_action(action)
+                    and engine.movement_path(engine.apply_action(state, action), perspective)[0] > my_dist
+                )
+            ]
+    return actions
 
 
 def action_priors(
@@ -63,14 +114,7 @@ def action_priors(
     max_actions: int,
     forbidden_actions: set[str] | None = None,
 ) -> list[tuple[str, float]]:
-    forbidden_actions = forbidden_actions or set()
-    actions = [
-        action
-        for action in engine.ordered_actions(state, limit_walls=max_actions)
-        if action not in forbidden_actions
-    ][:max_actions]
-    if not actions and forbidden_actions:
-        actions = engine.ordered_actions(state, limit_walls=max_actions)[:max_actions]
+    actions = race_filtered_actions(state, max_actions, forbidden_actions)
     if not actions:
         return []
     scored = [(action_prior_score(state, action), action) for action in actions]
@@ -140,7 +184,7 @@ def rollout_value(
     for _ in range(max(0, rollout_depth)):
         if winner(cur):
             break
-        actions = engine.ordered_actions(cur, limit_walls=max_actions)[:max_actions]
+        actions = race_filtered_actions(cur, max_actions)
         if not actions:
             break
         action = max(actions, key=lambda candidate: action_prior_score(cur, candidate))
@@ -159,13 +203,7 @@ def search_mcts(
     seed: int = 0,
 ) -> tuple[str, float, int]:
     avoid_actions = avoid_actions or set()
-    root_actions = [
-        action
-        for action in engine.ordered_actions(state, limit_walls=max_actions)
-        if action not in avoid_actions
-    ][:max_actions]
-    if not root_actions and avoid_actions:
-        root_actions = engine.ordered_actions(state, limit_walls=max_actions)[:max_actions]
+    root_actions = race_filtered_actions(state, max_actions, avoid_actions)
     if not root_actions:
         raise ValueError("No legal actions available for MCTS")
 

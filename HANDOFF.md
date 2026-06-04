@@ -190,3 +190,23 @@ Verification:
 Next recommended segment: improve MCTS priors with tactical/race features,
 add rollout/value calibration, then rerun larger cross-model tournaments before
 promoting it over alpha-beta.
+
+## 2026.06.04.05 MCTS v2 Segment
+
+Production backend clarification: the web/API backend still uses the tuned
+alpha-beta engine in `barricade_trainer.py`. MCTS is still an experimental
+candidate backend used by the local backtest runner only.
+
+Changes:
+
+- Added tactical MCTS policy priors through `action_prior_score()`.
+- Added short deterministic rollout value before backpropagation.
+- Connected root `avoid_actions` to MCTS and added fallback when all root moves
+  are avoided.
+- Added tests for MCTS avoid-action behavior and fallback.
+
+Verification:
+
+- 26 Python unit tests passed.
+- MCTS v2 smoke: alpha-beta depth 3 vs MCTS 80 simulations, 6 games, candidate
+  83.33%, baseline 16.67%, errors 0.

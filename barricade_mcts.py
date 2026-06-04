@@ -42,20 +42,54 @@ def value_from_perspective(state: engine.State, perspective: str) -> float:
     return math.tanh(score / 900.0)
 
 
-def action_priors(state: engine.State, max_actions: int) -> list[tuple[str, float]]:
-    actions = engine.ordered_actions(state, limit_walls=max_actions)[:max_actions]
+def action_prior_score(state: engine.State, action: str) -> float:
+    perspective = state.turn
+    child = engine.apply_action(state, action)
+    if child.pawn(perspective)[1] == engine.GOAL_ROW[perspective]:
+        return 1_000_000.0
+    if engine.player_has_goal_move(child, engine.opponent(perspective)):
+        return -500_000.0
+
+    before_my = engine.movement_path(state, perspective)[0]
+    before_opp = engine.movement_path(state, engine.opponent(perspective))[0]
+    after_my = engine.movement_path(child, perspective)[0]
+    after_opp = engine.movement_path(child, engine.opponent(perspective))[0]
+    race_delta = (before_my - after_my) * 120 + (after_opp - before_opp) * 140
+    return engine.action_score(state, action, perspective) + race_delta
+
+
+def action_priors(
+    state: engine.State,
+    max_actions: int,
+    forbidden_actions: set[str] | None = None,
+) -> list[tuple[str, float]]:
+    forbidden_actions = forbidden_actions or set()
+    actions = [
+        action
+        for action in engine.ordered_actions(state, limit_walls=max_actions)
+        if action not in forbidden_actions
+    ][:max_actions]
+    if not actions and forbidden_actions:
+        actions = engine.ordered_actions(state, limit_walls=max_actions)[:max_actions]
     if not actions:
         return []
-    weights = [len(actions) - index for index in range(len(actions))]
+    scored = [(action_prior_score(state, action), action) for action in actions]
+    top = max(score for score, _ in scored)
+    weights = [max(1.0, 1.0 + (score - top) / 220.0 + len(scored) - index) for index, (score, _) in enumerate(scored)]
     total = sum(weights)
-    return [(action, weight / total) for action, weight in zip(actions, weights)]
+    return [(action, weight / total) for weight, (_, action) in zip(weights, scored)]
 
 
-def expand(node: MctsNode, max_actions: int) -> None:
+def expand(
+    node: MctsNode,
+    max_actions: int,
+    forbidden_actions: set[str] | None = None,
+) -> None:
     if node.expanded or winner(node.state):
         node.expanded = True
         return
-    for action, prior in action_priors(node.state, max_actions):
+    root_forbidden = forbidden_actions if node.parent is None else None
+    for action, prior in action_priors(node.state, max_actions, root_forbidden):
         if action not in node.children:
             child_state = engine.apply_action(node.state, action)
             node.children[action] = MctsNode(
@@ -96,15 +130,42 @@ def backpropagate(node: MctsNode, value: float) -> None:
         cur = cur.parent
 
 
+def rollout_value(
+    state: engine.State,
+    perspective: str,
+    rollout_depth: int,
+    max_actions: int,
+) -> float:
+    cur = state
+    for _ in range(max(0, rollout_depth)):
+        if winner(cur):
+            break
+        actions = engine.ordered_actions(cur, limit_walls=max_actions)[:max_actions]
+        if not actions:
+            break
+        action = max(actions, key=lambda candidate: action_prior_score(cur, candidate))
+        cur = engine.apply_action(cur, action)
+    return value_from_perspective(cur, perspective)
+
+
 def search_mcts(
     state: engine.State,
     time_limit: float = 0.2,
     simulations: int = 200,
     max_actions: int = 16,
     exploration: float = 1.35,
+    rollout_depth: int = 2,
+    avoid_actions: set[str] | None = None,
     seed: int = 0,
 ) -> tuple[str, float, int]:
-    root_actions = engine.ordered_actions(state, limit_walls=max_actions)[:max_actions]
+    avoid_actions = avoid_actions or set()
+    root_actions = [
+        action
+        for action in engine.ordered_actions(state, limit_walls=max_actions)
+        if action not in avoid_actions
+    ][:max_actions]
+    if not root_actions and avoid_actions:
+        root_actions = engine.ordered_actions(state, limit_walls=max_actions)[:max_actions]
     if not root_actions:
         raise ValueError("No legal actions available for MCTS")
 
@@ -117,14 +178,14 @@ def search_mcts(
     perspective = state.turn
     deadline = time.perf_counter() + max(0.0, time_limit)
     completed = 0
-    expand(root, max_actions)
+    expand(root, max_actions, avoid_actions)
 
     while completed < simulations and time.perf_counter() < deadline:
         node = root
         while node.expanded and node.children and not winner(node.state):
             node = select_child(node, exploration, rng, perspective)
-        expand(node, max_actions)
-        value = value_from_perspective(node.state, perspective)
+        expand(node, max_actions, avoid_actions)
+        value = rollout_value(node.state, perspective, rollout_depth, max_actions)
         backpropagate(node, value)
         completed += 1
 

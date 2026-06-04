@@ -114,6 +114,7 @@ class LocalEngineClient:
                     state,
                     time_limit=config.time_limit,
                     simulations=config.simulations,
+                    avoid_actions=avoid_actions,
                     seed=len(history),
                 )
             else:

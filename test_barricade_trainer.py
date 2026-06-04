@@ -210,6 +210,30 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(score, 100000.0)
         self.assertEqual(simulations, 0)
 
+    def test_mcts_respects_root_avoid_actions(self):
+        state = b.state_from_history("e2 e8 e3 e7")
+        forbidden = b.ordered_actions(state)[0]
+        best, _, _ = mcts.search_mcts(
+            state,
+            time_limit=0.05,
+            simulations=30,
+            avoid_actions={forbidden},
+            seed=11,
+        )
+        self.assertNotEqual(best, forbidden)
+
+    def test_mcts_falls_back_when_all_root_actions_are_avoided(self):
+        state = b.state_from_history("e2 e8 e3 e7")
+        legal = set(b.ordered_actions(state))
+        best, _, _ = mcts.search_mcts(
+            state,
+            time_limit=0.02,
+            simulations=10,
+            avoid_actions=legal,
+            seed=13,
+        )
+        self.assertIn(best, legal)
+
 
 if __name__ == "__main__":
     unittest.main()

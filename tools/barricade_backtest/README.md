@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.04.04`
+Current project version: `2026.06.04.05`
 
 The tool supports two execution modes:
 
@@ -85,7 +85,16 @@ mode for verifying that the deployed service still matches expected behavior.
 
 ## Recent Verification
 
-The latest promoted backend version is `2026.06.04.04`.
+The latest promoted backend version is `2026.06.04.05`.
+
+Version `2026.06.04.05` improves the experimental MCTS path with tactical
+policy priors, short rollout value, and root avoid-action fallback. The web/API
+production backend remains alpha-beta unless MCTS is explicitly selected in the
+local backtest runner.
+
+- Unit tests: 26 passed.
+- MCTS v2 smoke tournament: alpha-beta depth 3 vs MCTS 80 simulations, 6 games,
+  candidate win rate 83.33%, baseline 16.67%, errors 0.
 
 Version `2026.06.04.04` adds an experimental `barricade_mcts.py` backend and
 backtest switches for `--baseline-engine` / `--candidate-engine`. MCTS-lite uses

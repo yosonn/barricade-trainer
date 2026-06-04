@@ -419,6 +419,15 @@ def should_convert_race_by_sprinting(state: State, perspective: str) -> bool:
     return my_dist <= 4 and opp_dist >= my_dist + 6
 
 
+def should_simplify_corridor_race(state: State, perspective: str) -> bool:
+    my_dist, _ = movement_path(state, perspective)
+    opp_dist, _ = movement_path(state, opponent(perspective))
+    if my_dist == math.inf or opp_dist == math.inf:
+        return False
+    low_wall_race = state.walls_left(perspective) + state.walls_left(opponent(perspective)) <= 3
+    return low_wall_race and my_dist >= opp_dist + 4 and opp_dist > 2
+
+
 def opening_book_action(state: State) -> str | None:
     if (
         state.turn == "blue"
@@ -647,6 +656,16 @@ def search_best(
 
     opp = opponent(perspective)
     opp_dist, _ = movement_path(state, opp)
+    if max_depth >= 4 and should_simplify_corridor_race(state, perspective):
+        my_dist, _ = movement_path(state, perspective)
+        sprint_actions = [
+            action for action in root_actions
+            if is_pawn_action(action)
+            and movement_path(apply_action(state, action), perspective)[0] < my_dist
+        ]
+        if sprint_actions:
+            root_actions = sprint_actions
+
     if should_convert_race_by_sprinting(state, perspective):
         progress_actions = [
             action for action in root_actions

@@ -185,6 +185,17 @@ class BarricadeTrainerTests(unittest.TestCase):
         best, _, _ = b.search_best(state, time_limit=0.2, max_depth=4)
         self.assertEqual(best, "g5")
 
+    def test_deeper_search_simplifies_losing_low_wall_corridor_race(self):
+        history = (
+            "e2 e8 e3 he8 he7 hc8 e4 hg8 e5 ha8 hd3 d8 "
+            "e6 ve6 e7 vf8 hc7 ve4 hb6 c8 va7 b8 hc2 b7 "
+            "hb1 c7 vd4 vd2 e6 d7 d6 d5 vc4 d7 c6 d6 c5 c6 c4 c5 c3 c4"
+        )
+        state = b.state_from_history(history)
+        self.assertEqual(state.red_walls + state.blue_walls, 3)
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=4)
+        self.assertEqual(best, "b3")
+
 
 if __name__ == "__main__":
     unittest.main()

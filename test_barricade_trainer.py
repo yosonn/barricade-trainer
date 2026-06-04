@@ -160,6 +160,31 @@ class BarricadeTrainerTests(unittest.TestCase):
         best, _, _ = b.search_best(state, time_limit=0.2, max_depth=4)
         self.assertEqual(best, "a6")
 
+    def test_red_does_not_spend_low_walls_on_weak_delay_when_behind(self):
+        history = (
+            "e2 e8 e3 e7 e4 e6 he2 he6 hd5 vc4 e5 d6 vc6 hf5 "
+            "f5 hh5 hd7 vd3 ve7 e6 hg6 f6 e5 g6 hc2 hd4 "
+            "f5 h6 f4 i6 hb1 i7 g4 h7 g3 hg2 h3 vh3 h4 hg4 g4 h8"
+        )
+        state = b.state_from_history(history)
+        self.assertEqual(state.red_walls, 2)
+        self.assertEqual(state.blue_walls, 1)
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=4)
+        self.assertEqual(best, "f4")
+
+    def test_red_preserves_final_wall_for_sprint_when_trailing(self):
+        history = (
+            "e2 e8 e3 e7 e4 e6 he2 he6 hd5 vc4 e5 d6 vc6 hf5 "
+            "f5 hh5 hd7 vd3 ve7 e6 hg6 f6 e5 g6 hc2 hd4 "
+            "f5 h6 f4 i6 hb1 i7 g4 h7 g3 hg2 h3 vh3 h4 hg4 "
+            "g4 h8 vg8 h7 f4 g7 f5 g8"
+        )
+        state = b.state_from_history(history)
+        self.assertEqual(state.red_walls, 1)
+        self.assertEqual(state.blue_walls, 1)
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=4)
+        self.assertEqual(best, "g5")
+
 
 if __name__ == "__main__":
     unittest.main()

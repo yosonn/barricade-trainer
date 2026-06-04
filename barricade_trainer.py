@@ -358,6 +358,8 @@ def wall_resource_adjustment(state: State, action: str, perspective: str) -> flo
         score -= 260
     if my_walls <= 1 and opp_delay < 2:
         score -= 360
+    if my_walls <= 2 and my_dist >= opp_dist + 4 and opp_dist > 2 and opp_delay < 3:
+        score -= 900 + (my_dist - opp_dist) * 60
     if opp_walls - my_walls >= 4 and opp_delay <= 1:
         score -= (opp_walls - my_walls) * 45
     if my_dist <= 3 and opp_dist >= my_dist + 3 and opp_delay < 2:

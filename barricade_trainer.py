@@ -413,6 +413,70 @@ def race_conversion_adjustment(state: State, action: str, perspective: str) -> f
     return score
 
 
+def pawn_race_adjustment(state: State, action: str, perspective: str) -> float:
+    """In low-wall races, prefer safe shortest-path progress over lateral drift."""
+    if not is_pawn_action(action):
+        return 0.0
+
+    opp = opponent(perspective)
+    my_walls = state.walls_left(perspective)
+    opp_walls = state.walls_left(opp)
+    total_walls = my_walls + opp_walls
+    if total_walls > 1:
+        return 0.0
+
+    my_dist, _ = movement_path(state, perspective)
+    opp_dist, _ = movement_path(state, opp)
+    if my_dist == math.inf or opp_dist == math.inf:
+        return 0.0
+
+    child = apply_action(state, action)
+    new_my_dist, _ = movement_path(child, perspective)
+    new_opp_dist, _ = movement_path(child, opp)
+    progress = my_dist - new_my_dist
+    opp_progress = opp_dist - new_opp_dist
+    score = 0.0
+
+    if progress > 0:
+        score += 260 + progress * 180
+        if my_dist <= opp_dist:
+            score += 220
+        if not player_has_goal_move(child, opp):
+            score += 120
+    else:
+        score -= 260 + (new_my_dist - my_dist) * 140
+
+    if player_has_goal_move(child, opp):
+        score -= 650
+    if opp_progress > 0 and progress <= 0:
+        score -= opp_progress * 120
+    if total_walls == 0 and my_dist <= 4 and progress <= 0:
+        score -= 320
+    return score
+
+
+def safe_pawn_race_progress_actions(state: State, perspective: str) -> list[str]:
+    """Return safe pawn moves that shorten the current player's path in a pure race."""
+    opp = opponent(perspective)
+    if state.walls_left(perspective) + state.walls_left(opp) != 0:
+        return []
+    if player_has_goal_move(state, opp):
+        return []
+
+    my_dist, _ = movement_path(state, perspective)
+    opp_dist, _ = movement_path(state, opp)
+    if my_dist == math.inf or opp_dist == math.inf or my_dist > opp_dist:
+        return []
+
+    progress_actions: list[str] = []
+    for move in legal_pawn_moves(state, perspective):
+        action = coord_to_text(move)
+        child = apply_action(state, action)
+        if movement_path(child, perspective)[0] < my_dist and not player_has_goal_move(child, opp):
+            progress_actions.append(action)
+    return progress_actions
+
+
 def should_convert_race_by_sprinting(state: State, perspective: str) -> bool:
     my_dist, _ = movement_path(state, perspective)
     opp_dist, _ = movement_path(state, opponent(perspective))
@@ -549,6 +613,7 @@ def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
         score += (my_dist - new_my) * 90
         score += immediate_reply_adjustment(state, action, perspective)
         score += race_conversion_adjustment(state, action, perspective)
+        score += pawn_race_adjustment(state, action, perspective)
         if len(my_path) > 1 and pos == my_path[1]:
             score += 80
         if opp_dist <= 1 and pos[1] != GOAL_ROW[perspective]:
@@ -675,6 +740,10 @@ def search_best(
         if progress_actions:
             root_actions = progress_actions
 
+    safe_race_actions = safe_pawn_race_progress_actions(state, perspective)
+    if safe_race_actions:
+        root_actions = [action for action in root_actions if action in safe_race_actions]
+
     if opp_dist <= 1 and state.walls_left(perspective) > 0:
         blockers: list[tuple[float, str]] = []
         for wall in legal_walls(state, focused=True):
@@ -690,6 +759,7 @@ def search_best(
         score += immediate_reply_adjustment(state, action, perspective)
         score += wall_resource_adjustment(state, action, perspective)
         score += race_conversion_adjustment(state, action, perspective)
+        score += pawn_race_adjustment(state, action, perspective)
         if action in avoid_actions and not improves_root_path(action) and not tactically_justified_reposition(action):
             return score - 900
         return score

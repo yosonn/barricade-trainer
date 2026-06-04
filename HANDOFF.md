@@ -347,3 +347,29 @@ Verification:
 - Local HTTP smoke should confirm `ai.html`, `app.css`, and `/api/analyze`
   expose version `2026.06.04.11`, `ai.html` contains `目前提示`, and the visible
   analysis panel is absent.
+
+## 2026.06.04.12 No-Wall Race Sprint Segment
+
+Production backend remains alpha-beta. This segment improves endgame pawn-race
+behavior after the loss audits showed repeated low-wall race drift.
+
+Changes:
+
+- Added `pawn_race_adjustment()` to reward safe shortest-path pawn progress in
+  low-wall races and penalize lateral drift that gives the opponent tempo.
+- Added `safe_pawn_race_progress_actions()` and root filtering for pure no-wall
+  races when the side to move is not behind.
+- Added red and blue no-wall sprint regression tests.
+- Bumped app/cache version to `2026.06.04.12`.
+
+Verification:
+
+- `node --check` passed for `ai.js` and `app.js`.
+- `py_compile` passed for `barricade_web.py` and `barricade_trainer.py`.
+- 30 Python unit tests passed.
+- Local HTTP smoke confirmed `ai.html` and `/api/analyze` expose
+  `2026.06.04.12`.
+- Known screenshot loss position still recommends `g5` instead of wasting a
+  final wall.
+- Local backtest smoke, depth3 candidate vs depth2 baseline, 8 games:
+  candidate 75%, baseline 25%, errors 0.

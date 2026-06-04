@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.04.11`
+Current project version: `2026.06.04.12`
 
 The tool supports two execution modes:
 
@@ -100,7 +100,13 @@ mode for verifying that the deployed service still matches expected behavior.
 
 ## Recent Verification
 
-The latest promoted project version is `2026.06.04.11`.
+The latest promoted project version is `2026.06.04.12`.
+
+Version `2026.06.04.12` improves the production alpha-beta backend in no-wall
+endgames. Pure pawn races now prioritize safe shortest-path progress when the
+side to move is not behind, reducing lateral drift during winning races.
+Verification: 30 unit tests passed; local smoke depth3 candidate vs depth2
+baseline over 8 games returned candidate 75%, baseline 25%, errors 0.
 
 Version `2026.06.04.11` restores the original `ai.html` battle layout and
 removes the visible realtime analysis panel. The board rail now shows the

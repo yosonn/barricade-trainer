@@ -216,6 +216,28 @@ class BarricadeTrainerTests(unittest.TestCase):
         best, _, _ = b.search_best(state, time_limit=0.2, max_depth=4)
         self.assertEqual(best, "b3")
 
+    def test_red_sprints_in_winning_no_wall_race(self):
+        state = b.State(
+            red=b.text_to_coord("a4"),
+            blue=b.text_to_coord("a8"),
+            turn="red",
+            red_walls=0,
+            blue_walls=0,
+        )
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=3)
+        self.assertEqual(best, "a5")
+
+    def test_blue_sprints_in_winning_no_wall_race(self):
+        state = b.State(
+            red=b.text_to_coord("i2"),
+            blue=b.text_to_coord("i6"),
+            turn="blue",
+            red_walls=0,
+            blue_walls=0,
+        )
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=3)
+        self.assertEqual(best, "i5")
+
     def test_mcts_recommends_legal_opening_action(self):
         state = b.state_from_history("e2 e8 e3 e7")
         best, _, simulations = mcts.search_mcts(state, time_limit=0.05, simulations=30, seed=7)

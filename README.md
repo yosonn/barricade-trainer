@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.04.11
+## Current Status: 2026.06.04.12
 
 The production web/API backend still uses the tuned alpha-beta search in
 `barricade_trainer.py`. MCTS remains an experimental candidate backend, enabled
@@ -13,6 +13,14 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.04.12` improves the production alpha-beta backend for pure
+no-wall pawn races. When both sides have no walls and the side to move is not
+behind, root search now focuses on safe pawn moves that shorten the path to the
+goal, reducing lateral drift in winning endgames. Local verification: 30 unit
+tests passed, the known screenshot loss position still recommends `g5`, and an
+8-game depth3-vs-depth2 local smoke scored candidate 75%, baseline 25%,
+errors 0.
 
 Version `2026.06.04.11` restores the original AI battle page layout and removes
 the realtime analysis panel from the visible UI. The right board rail is back to

@@ -13,8 +13,8 @@ import barricade_mcts
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
-APP_VERSION = "2026.06.06.03"
-DEFAULT_ENGINE = "mcts"
+APP_VERSION = "2026.06.06.04"
+DEFAULT_ENGINE = "hybrid"
 DEFAULT_MCTS_SIMULATIONS = 120
 DEFAULT_MCTS_MAX_ACTIONS = 20
 DEFAULT_MCTS_ROLLOUT_DEPTH = 2
@@ -119,6 +119,7 @@ def analysis_payload(
     search_time: float,
     depth: int,
     engine_kind: str,
+    resolved_engine: str,
     recommendation: str | None,
     score: float | None,
     searched_depth: int | None,
@@ -134,6 +135,7 @@ def analysis_payload(
     avoided = sorted(avoid_actions or set())
     return {
         "engine": engine_kind,
+        "resolved_engine": resolved_engine,
         "perspective": perspective,
         "opponent": opp,
         "search_time": search_time,
@@ -150,6 +152,26 @@ def analysis_payload(
     }
 
 
+def resolve_hybrid_engine(state: engine.State) -> str:
+    perspective = state.turn
+    opp = engine.opponent(perspective)
+    my_dist, _ = engine.movement_path(state, perspective)
+    opp_dist, _ = engine.movement_path(state, opp)
+    total_walls = state.walls_left("red") + state.walls_left("blue")
+
+    # Use alpha-beta for tactical races, immediate threats, and narrow endgames.
+    if engine.player_has_goal_move(state, perspective) or engine.player_has_goal_move(state, opp):
+        return "alpha-beta"
+    if min(my_dist, opp_dist) <= 3:
+        return "alpha-beta"
+    if total_walls <= 3:
+        return "alpha-beta"
+    if state.walls_left(perspective) <= 1 or state.walls_left(opp) <= 1:
+        if abs(my_dist - opp_dist) <= 4:
+            return "alpha-beta"
+    return "mcts"
+
+
 def recommend_action(
     state: engine.State,
     search_time: float,
@@ -157,9 +179,10 @@ def recommend_action(
     engine_kind: str,
     avoid_actions: set[str] | None,
     seed: int = 0,
-) -> tuple[str, float, int]:
-    if engine_kind == "mcts":
-        return barricade_mcts.search_mcts(
+) -> tuple[str, float, int, str]:
+    resolved_engine = resolve_hybrid_engine(state) if engine_kind == "hybrid" else engine_kind
+    if resolved_engine == "mcts":
+        action, score, searched_depth = barricade_mcts.search_mcts(
             state,
             time_limit=search_time,
             simulations=DEFAULT_MCTS_SIMULATIONS,
@@ -169,12 +192,14 @@ def recommend_action(
             avoid_actions=avoid_actions,
             seed=seed,
         )
-    return engine.search_best(
+        return action, score, searched_depth, resolved_engine
+    action, score, searched_depth = engine.search_best(
         state,
         time_limit=search_time,
         max_depth=depth,
         avoid_actions=avoid_actions,
     )
+    return action, score, searched_depth, resolved_engine
 
 
 def state_payload(
@@ -197,9 +222,10 @@ def state_payload(
     recommendation = None
     score = None
     searched_depth = None
+    resolved_engine = engine_kind
     recommend_side = state.turn if recommend_for_turn else user_side
     if state.turn == recommend_side and actions:
-        recommendation, score, searched_depth = recommend_action(
+        recommendation, score, searched_depth, resolved_engine = recommend_action(
             state,
             search_time,
             depth,
@@ -228,6 +254,8 @@ def state_payload(
         },
         "walls": [engine.wall_to_text(wall) for wall in sorted(state.walls)],
         "legal_actions": actions,
+        "engine": engine_kind,
+        "resolved_engine": resolved_engine,
         "recommendation": recommendation,
         "score": score,
         "searched_depth": searched_depth,
@@ -241,6 +269,7 @@ def state_payload(
             search_time,
             depth,
             engine_kind,
+            resolved_engine,
             recommendation,
             score,
             searched_depth,
@@ -309,8 +338,8 @@ class Handler(SimpleHTTPRequestHandler):
             search_time = max(0.05, min(float(payload.get("time", 0.5)), 3.0))
             depth = max(1, min(int(payload.get("depth", 3)), 5))
             engine_kind = str(payload.get("engine", DEFAULT_ENGINE))
-            if engine_kind not in {"alpha-beta", "mcts"}:
-                raise ValueError("engine must be alpha-beta or mcts")
+            if engine_kind not in {"alpha-beta", "mcts", "hybrid"}:
+                raise ValueError("engine must be alpha-beta, mcts, or hybrid")
             recommend_for_turn = bool(payload.get("recommend_for_turn", False))
             state = engine.state_from_history(history, start_turn=start_turn)
             avoid_actions = recent_reversal_avoid_actions(history, start_turn)

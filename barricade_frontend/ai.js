@@ -26,10 +26,13 @@ const replayForwardBtn = document.querySelector("#replayForwardBtn");
 const replayLiveBtn = document.querySelector("#replayLiveBtn");
 const timeLimit = document.querySelector("#timeLimit");
 const depthLimit = document.querySelector("#depthLimit");
+const engineSelect = document.querySelector("#engineSelect");
 const redTimeLimit = document.querySelector("#redTimeLimit");
 const redDepthLimit = document.querySelector("#redDepthLimit");
+const redEngineSelect = document.querySelector("#redEngineSelect");
 const blueTimeLimit = document.querySelector("#blueTimeLimit");
 const blueDepthLimit = document.querySelector("#blueDepthLimit");
+const blueEngineSelect = document.querySelector("#blueEngineSelect");
 
 let mode = "human";
 let humanSide = "red";
@@ -114,12 +117,12 @@ function sideToMoveForHistory(history) {
 
 function searchParamsForSide(side) {
   if (mode !== "auto") {
-    return { time: Number(timeLimit.value), depth: Number(depthLimit.value) };
+    return { time: Number(timeLimit.value), depth: Number(depthLimit.value), engine: engineSelect.value };
   }
   if (side === "blue") {
-    return { time: Number(blueTimeLimit.value), depth: Number(blueDepthLimit.value) };
+    return { time: Number(blueTimeLimit.value), depth: Number(blueDepthLimit.value), engine: blueEngineSelect.value };
   }
-  return { time: Number(redTimeLimit.value), depth: Number(redDepthLimit.value) };
+  return { time: Number(redTimeLimit.value), depth: Number(redDepthLimit.value), engine: redEngineSelect.value };
 }
 
 function activeSearchParams(history) {
@@ -168,7 +171,7 @@ function syncSidesForMode() {
 
 async function fetchAnalysis(history, options = {}) {
   const shouldRecommend = options.recommendForTurn ?? true;
-  const params = shouldRecommend ? activeSearchParams(history) : { time: 0.05, depth: 1 };
+  const params = shouldRecommend ? activeSearchParams(history) : { time: 0.05, depth: 1, engine: engineSelect.value };
   const response = await fetch("/api/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -179,6 +182,7 @@ async function fetchAnalysis(history, options = {}) {
       recommend_for_turn: shouldRecommend,
       time: params.time,
       depth: params.depth,
+      engine: params.engine,
     }),
   });
   return response.json();
@@ -234,7 +238,7 @@ function render(state) {
   document.querySelector("#blueInfo").textContent = `${t.walls} ${state.blue.walls}`;
   document.querySelector("#turnText").textContent = state.winner ? `${sideName(state.winner)}\u7372\u52dd` : `\u8f2a\u5230${sideName(state.turn)}`;
   recommendationEl.textContent = state.recommendation || "-";
-  scoreText.textContent = state.recommendation ? `\u5206\u6578 ${Number(state.score).toFixed(1)}\uff5c\u6df1\u5ea6 ${state.searched_depth}` : "\u7b49\u5f85\u5206\u6790";
+  scoreText.textContent = state.recommendation ? `\u5206\u6578 ${Number(state.score).toFixed(1)}\uff5c\u6df1\u5ea6 ${state.searched_depth}\uff5c\u6a21\u578b ${state.resolved_engine || state.engine || "-"}` : "\u7b49\u5f85\u5206\u6790";
   winRateText.textContent = `\u7d05\u65b9 ${state.red_win_rate ?? "-"}%\uff5c\u85cd\u65b9 ${state.blue_win_rate ?? "-"}%`;
 
   const humanTurn = hasHumanPlayer() && state.turn === humanSide && !state.winner && replayIndex === null;
@@ -671,7 +675,7 @@ boardEl.addEventListener("drop", (event) => {
 });
 
 
-[timeLimit, depthLimit, redTimeLimit, redDepthLimit, blueTimeLimit, blueDepthLimit].forEach((input) => {
+[timeLimit, depthLimit, engineSelect, redTimeLimit, redDepthLimit, redEngineSelect, blueTimeLimit, blueDepthLimit, blueEngineSelect].forEach((input) => {
   input.addEventListener("change", () => {
     stopAuto();
     analyze("\u5df2\u66f4\u65b0\u641c\u5c0b\u8a2d\u5b9a\u3002");

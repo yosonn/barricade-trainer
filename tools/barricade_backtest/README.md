@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.06.03`
+Current project version: `2026.06.06.04`
 
 The tool supports two execution modes:
 
@@ -99,7 +99,23 @@ mode for verifying that the deployed service still matches expected behavior.
 
 ## Recent Verification
 
-The latest promoted project version is `2026.06.06.03`.
+The latest promoted project version is `2026.06.06.04`.
+
+Version `2026.06.06.04` adds the hybrid engine to both local and API-mode
+backtests. The API mode now forwards the requested engine kind, and the default
+web/API engine is hybrid rather than plain MCTS.
+
+- Hybrid strategy: use MCTS for general planning, but switch to alpha-beta for
+  immediate goal threats, tactical endgames, and low-wall races.
+- Frontend now exposes model switching for both the trainer page and the AI
+  battle page.
+- Verification: 39 unit tests passed; `py_compile` passed for web, alpha-beta,
+  MCTS, and backtest modules; `node --check` passed for frontend scripts.
+- Hybrid vs MCTS, 8 games: 50% / 50%, errors 0.
+- Hybrid vs alpha-beta depth 3, 8 games: hybrid 62.5%, alpha-beta 37.5%,
+  errors 0.
+- API-mode smoke against a local HTTP server: MCTS candidate vs alpha-beta
+  baseline, 2 games, MCTS 100%, errors 0.
 
 Version `2026.06.06.03` promotes MCTS 120 to the production web/API default.
 The API and backtest API mode now pass an explicit engine kind, so deployed

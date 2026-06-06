@@ -124,6 +124,15 @@ class LocalEngineClient:
                     avoid_actions=avoid_actions,
                     seed=len(history),
                 )
+            elif config.kind == "hybrid":
+                recommendation, score, searched_depth, _ = web.recommend_action(
+                    state,
+                    config.time_limit,
+                    config.depth,
+                    "hybrid",
+                    avoid_actions,
+                    seed=len(history),
+                )
             else:
                 recommendation, score, searched_depth = engine.search_best(
                     state,
@@ -420,8 +429,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--candidate-time", type=float)
     parser.add_argument("--baseline-depth", type=int, default=2)
     parser.add_argument("--candidate-depth", type=int, default=3)
-    parser.add_argument("--baseline-engine", choices=("alpha-beta", "mcts"), default="alpha-beta")
-    parser.add_argument("--candidate-engine", choices=("alpha-beta", "mcts"), default="alpha-beta")
+    parser.add_argument("--baseline-engine", choices=("alpha-beta", "mcts", "hybrid"), default="alpha-beta")
+    parser.add_argument("--candidate-engine", choices=("alpha-beta", "mcts", "hybrid"), default="alpha-beta")
     parser.add_argument("--baseline-simulations", type=int, default=200)
     parser.add_argument("--candidate-simulations", type=int, default=200)
     parser.add_argument("--baseline-max-actions", type=int, default=16)

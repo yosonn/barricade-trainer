@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Barricade 訓練器</title>
-    <link rel="stylesheet" href="/app.css?v=2026.06.06.03">
+    <link rel="stylesheet" href="/app.css?v=2026.06.06.04">
   </head>
   <body>
     <main class="app">
@@ -12,7 +12,7 @@
         <header class="top">
           <div>
             <h1>Barricade 訓練器</h1>
-            <small class="app-version">版本 2026.06.06.03</small>
+            <small class="app-version">版本 2026.06.06.04</small>
             <p>離線練習 / 復盤分析</p>
             <p><a class="top-link" href="/ai.html">開啟獨立 AI 對戰介面</a></p>
           </div>
@@ -100,6 +100,14 @@
               <input id="depthLimit" type="number" min="1" max="5" step="1" value="3">
             </label>
           </div>
+          <label class="field">
+            <span>模型</span>
+            <select id="engineSelect">
+              <option value="hybrid" selected>Hybrid</option>
+              <option value="mcts">MCTS</option>
+              <option value="alpha-beta">Alpha-Beta</option>
+            </select>
+          </label>
         </details>
 
         <section class="box help-box">
@@ -113,6 +121,6 @@
         </section>
       </aside>
     </main>
-    <script src="/app.js?v=2026.06.06.03"></script>
+    <script src="/app.js?v=2026.06.06.04"></script>
   </body>
 </html>

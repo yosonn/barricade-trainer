@@ -1,13 +1,12 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.06.03
+## Current Status: 2026.06.06.04
 
-The production web/API backend now defaults to the MCTS backend in
-`barricade_mcts.py`, using 120 simulations, 20 max actions, rollout depth 2, and
-exploration 1.35. The tuned alpha-beta search in `barricade_trainer.py` remains
-available as a safe fallback by sending `engine: "alpha-beta"` to
-`/api/analyze` or by selecting `--baseline-engine alpha-beta` /
-`--candidate-engine alpha-beta` in the backtest tool.
+The production web/API backend now defaults to a hybrid engine. It routes to
+MCTS for general midgame planning, and switches to alpha-beta for tactical
+endgames, immediate goal threats, and low-wall races. The API and frontend now
+support explicit model selection through `engine: "hybrid"`, `engine: "mcts"`,
+or `engine: "alpha-beta"`.
 
 New backtest options:
 
@@ -16,17 +15,23 @@ New backtest options:
 - `--baseline-simulations`
 - `--candidate-simulations`
 
+Version `2026.06.06.04` adds the hybrid model and frontend model toggle. The
+hybrid engine keeps MCTS 120 as the normal planner, but hands tactical
+late-goal and low-wall positions to alpha-beta. This directly targets the loss
+pattern from the reviewed game: strong models agreed on path-first recovery
+choices, while the real losing line kept bleeding tempo after the first mistake.
+
+Verification: 39 unit tests passed; `py_compile` passed for the web,
+alpha-beta, MCTS, and backtest modules; `node --check` passed for the frontend.
+Hybrid vs MCTS over 8 local games finished 50% / 50%, and hybrid vs alpha-beta
+depth 3 finished 62.5% / 37.5%. HTTP smoke confirmed default `engine=hybrid`
+plus explicit `mcts` and `alpha-beta` requests all work.
+
 Version `2026.06.06.03` promotes MCTS 120 to the production web/API default
 after promotion testing showed it consistently outperforming alpha-beta depth 3
 in local and API-mode checks. The API now accepts `engine: "mcts"` or
 `engine: "alpha-beta"`, and the analysis payload reports the active engine so
 tooling can verify which model made the recommendation.
-
-Promotion verification: MCTS 120 vs alpha-beta depth 3 scored 16/16 wins in a
-local confirmation tournament, and the reverse setup scored MCTS 7/8 wins. API
-mode smoke through a local HTTP server scored MCTS 2/2 wins against alpha-beta,
-errors 0. Unit tests: 38 passed; `py_compile` passed for the web, alpha-beta,
-MCTS, and backtest modules.
 
 Version `2026.06.06.02` improves the production alpha-beta backend in two
 audited race positions. First, early/midgame tempo now prefers direct pawn

@@ -517,3 +517,41 @@ Risk note:
   stochastic/tree-search based and should be monitored with larger tournaments.
   Keep alpha-beta fallback available until MCTS has broader production-game
   evidence.
+
+## 2026.06.06.04 Hybrid Engine and Model Toggle Segment
+
+Production backend now defaults to `hybrid`. The hybrid engine uses MCTS for
+general play and switches to alpha-beta in tactical endgames and low-wall
+races.
+
+Changes:
+
+- Added hybrid dispatch in `barricade_web.py` with `resolve_hybrid_engine()`.
+- Default API engine changed from `mcts` to `hybrid`.
+- API now accepts `engine: "hybrid"`, `engine: "mcts"`, or
+  `engine: "alpha-beta"`.
+- Analysis payload now distinguishes requested `engine` from `resolved_engine`.
+- Added local backtest support for `hybrid`.
+- Added frontend model selectors on both `/` and `/ai.html`.
+- Bumped app/cache version to `2026.06.06.04`.
+
+Why:
+
+- In the reviewed user loss, stronger models agreed on the key recovery moves,
+  but the practical failure pattern mixed broad-planning and tactical-race
+  issues.
+- Pure MCTS remained stronger overall than alpha-beta, but alpha-beta still
+  provides useful tactical guardrails in late-goal and low-wall states.
+
+Verification:
+
+- 39 Python unit tests passed.
+- `py_compile` passed for `barricade_web.py`, `barricade_trainer.py`,
+  `barricade_mcts.py`, and `tools/barricade_backtest/backtest_loop.py`.
+- `node --check` passed for `barricade_frontend/app.js` and
+  `barricade_frontend/ai.js`.
+- Local HTTP smoke confirmed default `hybrid` plus explicit `mcts` and
+  `alpha-beta` engine selection all work.
+- Hybrid vs MCTS, 8 games: 50% / 50%, errors 0.
+- Hybrid vs alpha-beta depth 3, 8 games: hybrid 62.5%, alpha-beta 37.5%,
+  errors 0.

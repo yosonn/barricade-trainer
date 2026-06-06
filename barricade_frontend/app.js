@@ -16,6 +16,7 @@ const analyzeBtn = document.querySelector("#analyzeBtn");
 const resetBtn = document.querySelector("#resetBtn");
 const timeLimit = document.querySelector("#timeLimit");
 const depthLimit = document.querySelector("#depthLimit");
+const engineSelect = document.querySelector("#engineSelect");
 const flowHint = document.querySelector("#flowHint");
 const actionLabel = document.querySelector("#actionLabel");
 const boardAcceptBtn = document.querySelector("#boardAcceptBtn");
@@ -124,6 +125,7 @@ async function fetchAnalysis(history) {
       user_side: userSide,
       time: Number(timeLimit.value),
       depth: Number(depthLimit.value),
+      engine: engineSelect.value,
     }),
   });
   return response.json();
@@ -185,6 +187,9 @@ function render(state) {
   scoreText.textContent = state.recommendation
     ? `分數 ${Number(state.score).toFixed(1)}｜深度 ${state.searched_depth}`
     : text.waiting;
+  if (state.recommendation) {
+    scoreText.textContent = `分數 ${Number(state.score).toFixed(1)}｜深度 ${state.searched_depth}｜模型 ${state.resolved_engine || state.engine || "-"}`;
+  }
 
   const myRate = userSide === "red" ? state.red_win_rate : state.blue_win_rate;
   const myVerdict = userSide === "red" ? state.red_verdict : state.blue_verdict;
@@ -526,4 +531,5 @@ boardEl.addEventListener("drop", (event) => {
 });
 
 historyEl.addEventListener("blur", analyze);
+engineSelect.addEventListener("change", () => analyze("已更新模型設定。"));
 analyze();

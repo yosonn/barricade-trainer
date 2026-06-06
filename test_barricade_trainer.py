@@ -129,7 +129,8 @@ class BarricadeTrainerTests(unittest.TestCase):
         state = b.state_from_history("e2 e8 e3 e7")
         payload = web.state_payload(state, "red", 0.05, 2, recommend_for_turn=True)
         analysis = payload["analysis"]
-        self.assertEqual(analysis["engine"], "mcts")
+        self.assertEqual(analysis["engine"], "hybrid")
+        self.assertIn(analysis["resolved_engine"], {"mcts", "alpha-beta"})
         self.assertEqual(analysis["perspective"], state.turn)
         self.assertGreaterEqual(len(analysis["candidates"]), 1)
         self.assertIn("action", analysis["candidates"][0])
@@ -146,7 +147,22 @@ class BarricadeTrainerTests(unittest.TestCase):
             recommend_for_turn=True,
         )
         self.assertEqual(payload["analysis"]["engine"], "alpha-beta")
+        self.assertEqual(payload["analysis"]["resolved_engine"], "alpha-beta")
         self.assertIn(payload["recommendation"], payload["legal_actions"])
+
+    def test_hybrid_resolves_to_alpha_beta_in_late_goal_threat(self):
+        history = (
+            "e2 e8 e3 e7 e4 e6 he2 hd4 f4 e5 f5 g5 hg4 he5 "
+            "vg5 g6 vf3 g7 vg7 g8 g5 hf6 g6 ve6 g5 g9 hh8 "
+            "vd5 vf8 g8 vd7 g7 f5 f7 f4 f8 e4 vc3 e3 f9 d3 e9 d2 d9 c2 "
+            "hb2 ha1 c9 b2 b9 hc1 a9 a2 a8 a3 a7 a4 a6 b4 a5 b5 a4 "
+            "b6 hb6 a6 ha7 a7 a3"
+        )
+        state = b.state_from_history(history)
+        payload = web.state_payload(state, "blue", 0.05, 3, recommend_for_turn=True)
+        self.assertEqual(payload["analysis"]["engine"], "hybrid")
+        self.assertEqual(payload["analysis"]["resolved_engine"], "alpha-beta")
+        self.assertEqual(payload["recommendation"], "b7")
 
     def test_loss_audit_helpers_identify_side_and_distance_delta(self):
         record = {"red_engine": "candidate", "blue_engine": "baseline"}

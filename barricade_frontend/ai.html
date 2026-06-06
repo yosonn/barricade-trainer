@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Barricade AI 對戰</title>
-    <link rel="stylesheet" href="/app.css?v=2026.06.06.03">
+    <link rel="stylesheet" href="/app.css?v=2026.06.06.04">
   </head>
   <body>
     <main class="app ai-app">
@@ -12,7 +12,7 @@
         <header class="top">
           <div>
             <h1>Barricade AI 對戰</h1>
-            <small class="app-version">版本 2026.06.06.03</small>
+            <small class="app-version">版本 2026.06.06.04</small>
             <p>玩家對電腦 / 上下 AI 對戰 / 雙電腦互玩 / 賽後回放</p>
             <p><a class="top-link" href="/">回到訓練器</a></p>
           </div>
@@ -114,6 +114,14 @@
               <input id="depthLimit" type="number" min="1" max="5" step="1" value="3">
             </label>
           </div>
+          <label class="field">
+            <span>模型</span>
+            <select id="engineSelect">
+              <option value="hybrid" selected>Hybrid</option>
+              <option value="mcts">MCTS</option>
+              <option value="alpha-beta">Alpha-Beta</option>
+            </select>
+          </label>
           <div class="settings-help">
             <p><b>&#38617;&#38651;&#33126;&#24375;&#24230;</b>&#65306;&#21482;&#22312;&#38617;&#38651;&#33126;&#20114;&#29609;&#27169;&#24335;&#20351;&#29992;&#12290;&#21487;&#20197;&#35731;&#32005;&#26041;&#33287;&#34253;&#26041;&#29992;&#19981;&#21516;&#24605;&#32771;&#26178;&#38291;&#28204;&#35430;&#24375;&#24369;&#24046;&#30064;&#12290;</p>
           </div>
@@ -128,6 +136,14 @@
                 <span>&#26368;&#22823;&#28145;&#24230;</span>
                 <input id="redDepthLimit" type="number" min="1" max="6" step="1" value="3">
               </label>
+              <label class="field">
+                <span>&#27169;&#22411;</span>
+                <select id="redEngineSelect">
+                  <option value="hybrid" selected>Hybrid</option>
+                  <option value="mcts">MCTS</option>
+                  <option value="alpha-beta">Alpha-Beta</option>
+                </select>
+              </label>
             </div>
             <div class="strength-card blue-card">
               <b>&#34253;&#26041;&#38651;&#33126;</b>
@@ -139,11 +155,19 @@
                 <span>&#26368;&#22823;&#28145;&#24230;</span>
                 <input id="blueDepthLimit" type="number" min="1" max="6" step="1" value="3">
               </label>
+              <label class="field">
+                <span>&#27169;&#22411;</span>
+                <select id="blueEngineSelect">
+                  <option value="hybrid" selected>Hybrid</option>
+                  <option value="mcts">MCTS</option>
+                  <option value="alpha-beta">Alpha-Beta</option>
+                </select>
+              </label>
             </div>
           </div>
         </details>
       </aside>
     </main>
-    <script src="/ai.js?v=2026.06.06.03"></script>
+    <script src="/ai.js?v=2026.06.06.04"></script>
   </body>
 </html>

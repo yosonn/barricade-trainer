@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.06.01`
+Current project version: `2026.06.06.02`
 
 The tool supports two execution modes:
 
@@ -100,7 +100,24 @@ mode for verifying that the deployed service still matches expected behavior.
 
 ## Recent Verification
 
-The latest promoted project version is `2026.06.06.01`.
+The latest promoted project version is `2026.06.06.02`.
+
+Version `2026.06.06.02` improves the production alpha-beta backend with audited
+tempo and delay-wall tuning.
+
+- Early/midgame tempo: when both sides are close in path distance and the engine
+  still has many walls, prefer direct progress over weak delay walls or walls
+  that slow the engine's own path.
+- Low-wall trailing race: when behind, holding 2 or fewer walls, and the
+  opponent has no walls, a wall that delays the opponent by 2 steps without
+  self-delay is no longer over-penalized.
+- Verification: 37 unit tests passed; `py_compile` passed for
+  `barricade_web.py`, `barricade_trainer.py`, and `barricade_mcts.py`.
+- Alpha-beta depth 3 vs alpha-beta depth 2, 4 games: candidate 75%, baseline
+  25%, errors 0.
+- MCTS 120 simulations vs alpha-beta depth 3, 8 games: MCTS 62.5%, alpha-beta
+  37.5%, errors 0. MCTS remains experimental but is the next promotion
+  candidate to test more deeply.
 
 Version `2026.06.06.01` improves the production alpha-beta backend with a
 late-goal wall threat guard. Near the goal, if the opponent still has walls and

@@ -438,3 +438,40 @@ Design note:
 - This is intentionally not a general wall-spending encouragement. It activates
   only for severe near-goal future wall traps because broader scoring hurt a
   4-game smoke run before the trigger was narrowed.
+
+## 2026.06.06.02 Opening Tempo and Delay-Wall Segment
+
+Production backend remains alpha-beta. This segment continues the audit-driven
+optimization loop after MCTS 120 simulations beat alpha-beta in several short
+cross-model checks.
+
+Changes:
+
+- Added `opening_tempo_adjustment()` to prefer direct pawn progress over weak
+  early/midgame delay walls when the engine is not behind and still has plenty
+  of walls.
+- Penalized early/midgame walls that slow the engine's own path unless they
+  create at least a 3-step opponent delay.
+- Relaxed the low-wall trailing-race wall penalty when the opponent has no
+  walls and a no-self-delay wall still adds 2 opponent path steps.
+- Added regression coverage for:
+  - `hd3` vs `e6` opening-tempo mistake.
+  - `hc7` vs `e6` self-slowing opening wall mistake.
+  - `c2` vs `va3` low-wall trailing delay-wall mistake.
+- Bumped app/cache version to `2026.06.06.02`.
+
+Verification:
+
+- 37 Python unit tests passed.
+- `py_compile` passed for `barricade_web.py`, `barricade_trainer.py`, and
+  `barricade_mcts.py`.
+- Alpha-beta depth 3 candidate vs alpha-beta depth 2 baseline, 4 games:
+  candidate 75%, baseline 25%, errors 0.
+- MCTS 120 / max_actions 20 / rollout depth 2 vs alpha-beta depth 3, 8 games:
+  MCTS 62.5%, alpha-beta 37.5%, errors 0.
+
+Decision:
+
+- Keep production on alpha-beta for `2026.06.06.02`.
+- Treat MCTS 120 as the next promotion candidate, but require a larger
+  confirmation tournament and loss audit before changing the web/API default.

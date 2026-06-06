@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.06.01
+## Current Status: 2026.06.06.02
 
 The production web/API backend still uses the tuned alpha-beta search in
 `barricade_trainer.py`. MCTS remains an experimental candidate backend, enabled
@@ -13,6 +13,22 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.06.02` improves the production alpha-beta backend in two
+audited race positions. First, early/midgame tempo now prefers direct pawn
+progress over weak or self-slowing delay walls when both sides are still close
+in path distance and the engine has plenty of walls. Second, low-wall trailing
+races now treat a no-self-delay wall that adds 2 opponent path steps as a valid
+resource spend when the opponent has no walls left. These changes target the
+audited `hd3`/`hc7` vs `e6` opening-tempo mistakes and the low-wall `c2` vs
+`va3` delay-wall mistake.
+
+Local verification: 37 unit tests passed; `py_compile` passed for
+`barricade_web.py`, `barricade_trainer.py`, and `barricade_mcts.py`; alpha-beta
+depth 3 vs alpha-beta depth 2 scored candidate 75%, baseline 25%, errors 0.
+MCTS 120 simulations remains a strong experimental candidate: an 8-game local
+check versus alpha-beta depth 3 scored MCTS 62.5%, alpha-beta 37.5%, errors 0,
+so MCTS should stay under evaluation before production promotion.
 
 Version `2026.06.06.01` improves the production alpha-beta backend for
 late-goal wall threats. When the side to move is within 4 path steps of the

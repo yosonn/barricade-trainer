@@ -359,7 +359,10 @@ def wall_resource_adjustment(state: State, action: str, perspective: str) -> flo
     if my_walls <= 1 and opp_delay < 2:
         score -= 360
     if my_walls <= 2 and my_dist >= opp_dist + 4 and opp_dist > 2 and opp_delay < 3:
-        score -= 900 + (my_dist - opp_dist) * 60
+        if opp_walls == 0 and opp_delay >= 2 and self_delay <= 0:
+            score -= 160 + (my_dist - opp_dist) * 20
+        else:
+            score -= 900 + (my_dist - opp_dist) * 60
     if opp_walls - my_walls >= 4 and opp_delay <= 1:
         score -= (opp_walls - my_walls) * 45
     if my_dist <= 3 and opp_dist >= my_dist + 3 and opp_delay < 2:
@@ -442,6 +445,34 @@ def defensive_wall_adjustment(state: State, action: str, perspective: str) -> fl
     if self_delay > 2 and threat_reduction < 4:
         score -= 220
     return score
+
+
+def opening_tempo_adjustment(state: State, action: str, perspective: str) -> float:
+    """Avoid spending early walls on low-impact delay when direct progress is available."""
+    opp = opponent(perspective)
+    my_dist, _ = movement_path(state, perspective)
+    opp_dist, _ = movement_path(state, opp)
+    if my_dist == math.inf or opp_dist == math.inf:
+        return 0.0
+    if len(state.walls) < 4 or len(state.walls) > 10:
+        return 0.0
+    if state.walls_left(perspective) < 5 or my_dist > opp_dist + 1:
+        return 0.0
+
+    child = apply_action(state, action)
+    new_my_dist, _ = movement_path(child, perspective)
+    new_opp_dist, _ = movement_path(child, opp)
+    progress = my_dist - new_my_dist
+    opp_delay = new_opp_dist - opp_dist
+    self_delay = new_my_dist - my_dist
+
+    if is_pawn_action(action):
+        return max(0, progress) * 80
+    if self_delay > 0 and opp_delay < 3:
+        return -260 - self_delay * 120
+    if opp_delay <= 1 and self_delay <= 0:
+        return -220
+    return 0.0
 
 
 def race_conversion_adjustment(state: State, action: str, perspective: str) -> float:
@@ -685,6 +716,7 @@ def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
         score = action_score(state, action, perspective)
         score += (my_dist - new_my) * 90
         score += immediate_reply_adjustment(state, action, perspective)
+        score += opening_tempo_adjustment(state, action, perspective)
         score += race_conversion_adjustment(state, action, perspective)
         score += pawn_race_adjustment(state, action, perspective)
         if len(my_path) > 1 and pos == my_path[1]:
@@ -704,6 +736,7 @@ def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
         gain = opp_delay * 150 - self_delay * 120
         gain += static_eval(trial, state.turn) * 0.02
         gain += wall_resource_adjustment(state, action, state.turn)
+        gain += opening_tempo_adjustment(state, action, state.turn)
         gain += race_conversion_adjustment(state, action, state.turn)
         if opp_delay <= 0:
             gain -= 120
@@ -850,6 +883,7 @@ def search_best(
         score += immediate_reply_adjustment(state, action, perspective)
         score += wall_resource_adjustment(state, action, perspective)
         score += defensive_wall_adjustment(state, action, perspective)
+        score += opening_tempo_adjustment(state, action, perspective)
         score += race_conversion_adjustment(state, action, perspective)
         score += pawn_race_adjustment(state, action, perspective)
         if action in avoid_actions and not improves_root_path(action) and not tactically_justified_reposition(action):

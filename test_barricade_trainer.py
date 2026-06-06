@@ -222,6 +222,29 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertLess(after_threat, before_threat)
         self.assertGreater(b.defensive_wall_adjustment(state, "hb8", "red"), 0)
 
+    def test_low_wall_trailing_race_uses_two_step_delay_wall(self):
+        history = (
+            "e2 e8 e3 he8 he7 hc8 e4 hg8 e5 ha8 hd3 d8 "
+            "e6 ve6 e7 vf8 e6 ve4 hc6 ve2 hb2 vc3 ha1 d7 "
+            "hc1 c7 vb7 vd5 e5 d7 e4 e7 d4 e6 d5 e5 c5 e4 "
+            "c4 d4 b4 d5 a4 c5 a3 c4 vb3 c5 a2 b5 b2 b4"
+        )
+        state = b.state_from_history(history)
+        best, _, _ = b.search_best(state, time_limit=0.05, max_depth=3)
+        self.assertEqual(best, "va3")
+
+    def test_opening_tempo_prefers_progress_over_weak_delay_wall(self):
+        history = "e2 e8 e3 he8 he7 hc8 e4 hg8 e5 ha8"
+        state = b.state_from_history(history)
+        best, _, _ = b.search_best(state, time_limit=0.05, max_depth=3)
+        self.assertEqual(best, "e6")
+
+    def test_opening_tempo_avoids_self_slowing_delay_wall(self):
+        history = "e2 e8 e3 he8 he7 hc8 e4 hg8 e5 d8"
+        state = b.state_from_history(history)
+        best, _, _ = b.search_best(state, time_limit=0.05, max_depth=3)
+        self.assertEqual(best, "e6")
+
     def test_deeper_search_simplifies_losing_low_wall_corridor_race(self):
         history = (
             "e2 e8 e3 he8 he7 hc8 e4 hg8 e5 ha8 hd3 d8 "

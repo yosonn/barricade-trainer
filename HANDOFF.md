@@ -404,3 +404,37 @@ Verification:
 - Loss audit no longer reports the repeated `f5` vs `f7` step-away as the top
   suspect. The next MCTS issue is midgame wall timing, top suspect `hb8` vs
   `ha7`, regret 204.0.
+
+## 2026.06.06.01 Late Goal-Path Threat Segment
+
+Production backend remains alpha-beta. This segment addresses the endgame
+failure pattern where a player is close to goal, but the opponent's next wall
+can turn a short path into a large detour.
+
+Changes:
+
+- Added `opponent_wall_threat()` to estimate the largest next-turn wall delay
+  the opponent can inflict on the current player's path.
+- Added `defensive_wall_adjustment()` for late-goal defensive walls that reduce
+  severe future detour threats, even when they add a small own-path delay.
+- Kept the feature root-only and gated to positions within 4 path steps of goal
+  with both players still holding walls, so it does not slow the full
+  alpha-beta tree.
+- Added a regression test derived from the reported loss pattern, using a
+  red-at-`a7` late position where `hb8` reduces the opponent's future `va6`-type
+  wall threat.
+- Bumped app/cache version to `2026.06.06.01`.
+
+Verification:
+
+- 34 Python unit tests passed.
+- `py_compile` passed for `barricade_web.py`, `barricade_trainer.py`, and
+  `barricade_mcts.py`.
+- Local smoke, alpha-beta depth 3 candidate vs alpha-beta depth 2 baseline,
+  4 games: candidate 75%, baseline 25%, errors 0.
+
+Design note:
+
+- This is intentionally not a general wall-spending encouragement. It activates
+  only for severe near-goal future wall traps because broader scoring hurt a
+  4-game smoke run before the trigger was narrowed.

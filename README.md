@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.04.13
+## Current Status: 2026.06.06.01
 
 The production web/API backend still uses the tuned alpha-beta search in
 `barricade_trainer.py`. MCTS remains an experimental candidate backend, enabled
@@ -13,6 +13,19 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.06.01` improves the production alpha-beta backend for
+late-goal wall threats. When the side to move is within 4 path steps of the
+goal and both players still have walls, root search now checks the opponent's
+largest next-turn wall delay. It rewards nearby defensive walls that reduce a
+severe future detour threat, even if that wall adds a small amount of own travel
+distance. The guard is root-only and gated to severe threats so it behaves like
+an endgame safety valve instead of slowing or distorting the whole search tree.
+
+Local verification: 34 unit tests passed; `py_compile` passed for
+`barricade_web.py`, `barricade_trainer.py`, and `barricade_mcts.py`; a 4-game
+local alpha-beta smoke scored candidate 75%, baseline 25%, errors 0. Production
+web/API move selection remains alpha-beta.
 
 Version `2026.06.04.13` improves the experimental MCTS backend by reusing the
 alpha-beta race sprint logic inside MCTS candidate filtering, priors, and

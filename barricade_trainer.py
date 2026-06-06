@@ -371,6 +371,79 @@ def wall_resource_adjustment(state: State, action: str, perspective: str) -> flo
     return score
 
 
+@lru_cache(maxsize=200_000)
+def opponent_wall_threat_cached(state_key: tuple, player: str) -> tuple[int, str]:
+    state = state_from_key(state_key)
+    actor = opponent(player)
+    probe = state if state.turn == actor else replace(state, turn=actor)
+    base = movement_path(probe, player)[0]
+    if probe.walls_left(actor) <= 0 or base == math.inf:
+        return 0, ""
+
+    best_delta = 0
+    best_action = ""
+    for wall in legal_walls(probe, focused=True):
+        action = wall_to_text(wall)
+        child = apply_action(probe, action)
+        delta = movement_path(child, player)[0] - base
+        if delta > best_delta:
+            best_delta = delta
+            best_action = action
+    return best_delta, best_action
+
+
+def opponent_wall_threat(state: State, player: str) -> tuple[int, str]:
+    """Largest next-turn wall delay the opponent can inflict on player."""
+    return opponent_wall_threat_cached(state.key(), player)
+
+
+def wall_near_wall(action: str, reference: str) -> bool:
+    if not reference:
+        return False
+    orient, x, y = text_to_wall(action)
+    ref_orient, ref_x, ref_y = text_to_wall(reference)
+    return orient == ref_orient and abs(x - ref_x) <= 1 and abs(y - ref_y) <= 1
+
+
+def defensive_wall_adjustment(state: State, action: str, perspective: str) -> float:
+    """Reward walls that spend a little tempo to remove a large future wall threat."""
+    if is_pawn_action(action):
+        return 0.0
+
+    opp = opponent(perspective)
+    my_walls = state.walls_left(perspective)
+    opp_walls = state.walls_left(opp)
+    if my_walls <= 0 or opp_walls <= 0:
+        return 0.0
+
+    child = apply_action(state, action)
+    my_dist, _ = movement_path(state, perspective)
+    opp_dist, _ = movement_path(state, opp)
+    new_my_dist, _ = movement_path(child, perspective)
+    new_opp_dist, _ = movement_path(child, opp)
+    if min(my_dist, new_my_dist) > 4:
+        return 0.0
+
+    self_delay = new_my_dist - my_dist
+    opp_delay = new_opp_dist - opp_dist
+    before_threat, _ = opponent_wall_threat(state, perspective)
+    after_threat, _ = opponent_wall_threat(child, perspective)
+    threat_reduction = before_threat - after_threat
+    if before_threat < 5 or threat_reduction <= 0:
+        return 0.0
+
+    score = threat_reduction * 190 + max(0, before_threat - 3) * 95
+    score += max(0, opp_delay) * 45
+    score -= max(0, self_delay) * 90
+
+    # Do not burn the final wall unless it removes a severe tactical threat.
+    if my_walls <= 1 and before_threat < 5:
+        score -= 260
+    if self_delay > 2 and threat_reduction < 4:
+        score -= 220
+    return score
+
+
 def race_conversion_adjustment(state: State, action: str, perspective: str) -> float:
     """Prefer converting a large race lead into progress instead of spending final walls."""
     opp = opponent(perspective)
@@ -669,6 +742,24 @@ def search_best(
         return book_action, static_eval(apply_action(state, book_action), perspective), 0
 
     root_actions = ordered_actions(state, limit_walls=16)[:ROOT_ACTION_LIMIT]
+    root_my_dist, _ = movement_path(state, perspective)
+    defensive_root_walls = []
+    if (
+        root_my_dist <= 4
+        and state.walls_left(perspective) > 0
+        and state.walls_left(opponent(perspective)) > 0
+    ):
+        root_threat, root_threat_wall = opponent_wall_threat(state, perspective)
+        if root_threat >= 5:
+            defensive_root_walls = [
+                wall_to_text(wall)
+                for wall in legal_walls(state, focused=True)
+                if wall_near_wall(wall_to_text(wall), root_threat_wall)
+                and defensive_wall_adjustment(state, wall_to_text(wall), perspective) >= 180
+            ]
+    for action in defensive_root_walls:
+        if action not in root_actions:
+            root_actions.append(action)
     winning_moves = [
         action for action in root_actions
         if is_pawn_action(action)
@@ -758,6 +849,7 @@ def search_best(
     def root_adjusted_score(action: str, score: float) -> float:
         score += immediate_reply_adjustment(state, action, perspective)
         score += wall_resource_adjustment(state, action, perspective)
+        score += defensive_wall_adjustment(state, action, perspective)
         score += race_conversion_adjustment(state, action, perspective)
         score += pawn_race_adjustment(state, action, perspective)
         if action in avoid_actions and not improves_root_path(action) and not tactically_justified_reposition(action):

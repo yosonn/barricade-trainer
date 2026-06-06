@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.04.13`
+Current project version: `2026.06.06.01`
 
 The tool supports two execution modes:
 
@@ -100,7 +100,21 @@ mode for verifying that the deployed service still matches expected behavior.
 
 ## Recent Verification
 
-The latest promoted project version is `2026.06.04.13`.
+The latest promoted project version is `2026.06.06.01`.
+
+Version `2026.06.06.01` improves the production alpha-beta backend with a
+late-goal wall threat guard. Near the goal, if the opponent still has walls and
+can create a severe next-turn detour, root search can value a defensive wall
+that slightly lengthens the current path but reduces that future trap. This
+targets positions where a player is almost home but one opponent wall would
+force a long reroute.
+
+- Verification: 34 unit tests passed; `py_compile` passed for
+  `barricade_web.py`, `barricade_trainer.py`, and `barricade_mcts.py`.
+- Local smoke: alpha-beta depth 3 candidate vs alpha-beta depth 2 baseline,
+  4 games, candidate 75%, baseline 25%, errors 0.
+- Production web/API play still defaults to alpha-beta; MCTS remains
+  experimental and backtest-selected only.
 
 Version `2026.06.04.13` improves the experimental MCTS backend with low-wall
 race filtering in candidate generation, priors, and rollout selection. Shortest

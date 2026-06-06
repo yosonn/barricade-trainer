@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 
 import barricade_mcts as mcts
 import barricade_trainer as b
@@ -204,6 +205,22 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(state.blue_walls, 1)
         best, _, _ = b.search_best(state, time_limit=0.2, max_depth=4)
         self.assertEqual(best, "g5")
+
+    def test_defensive_wall_values_reducing_future_wall_threat(self):
+        history = (
+            "e2 e8 e3 e7 e4 e6 he2 hd4 f4 e5 f5 g5 hg4 he5 "
+            "vg5 g6 vf3 g7 vg7 g8 g5 hf6 g6 ve6 g5 g9 hh8 "
+            "vd5 vf8 g8 vd7 g7 f5 f7 f4 f8 e4 vc3 e3 f9 d3 e9 d2 d9 c2 "
+            "hb2 ha1 c9 b2 b9 hc1 a9 a2 a8 a3 a7 a4 a6 b4 a5 b5 a4 "
+            "b6 hb6 a6 ha7 a7 a3"
+        )
+        state = replace(b.state_from_history(history), red_walls=1, turn="red")
+        before_threat, _ = b.opponent_wall_threat(state, "red")
+        child = b.apply_action(state, "hb8")
+        after_threat, _ = b.opponent_wall_threat(child, "red")
+        self.assertGreaterEqual(before_threat, 5)
+        self.assertLess(after_threat, before_threat)
+        self.assertGreater(b.defensive_wall_adjustment(state, "hb8", "red"), 0)
 
     def test_deeper_search_simplifies_losing_low_wall_corridor_race(self):
         history = (

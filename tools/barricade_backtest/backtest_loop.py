@@ -76,6 +76,7 @@ class BarricadeApiClient:
             "recommend_for_turn": True,
             "time": config.time_limit,
             "depth": config.depth,
+            "engine": config.kind,
         }
         data = json.dumps(payload).encode("utf-8")
         request = Request(
@@ -135,6 +136,7 @@ class LocalEngineClient:
             user_side=side_to_optimize,
             search_time=config.time_limit,
             depth=config.depth,
+            engine_kind=config.kind,
             recommend_for_turn=False,
             start_turn=start_turn,
             avoid_actions=avoid_actions,

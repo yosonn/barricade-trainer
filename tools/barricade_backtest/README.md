@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.06.02`
+Current project version: `2026.06.06.03`
 
 The tool supports two execution modes:
 
@@ -25,8 +25,7 @@ Run the same tournament entirely inside the local repo:
   tools\barricade_backtest\backtest_loop.py --mode local --games 10 --baseline-depth 2 --candidate-depth 3 --time 0.05
 ```
 
-Compare the normal alpha-beta backend against the experimental MCTS-lite
-backend:
+Compare the alpha-beta fallback backend against the production MCTS backend:
 
 ```powershell
 & 'C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
@@ -100,7 +99,24 @@ mode for verifying that the deployed service still matches expected behavior.
 
 ## Recent Verification
 
-The latest promoted project version is `2026.06.06.02`.
+The latest promoted project version is `2026.06.06.03`.
+
+Version `2026.06.06.03` promotes MCTS 120 to the production web/API default.
+The API and backtest API mode now pass an explicit engine kind, so deployed
+checks can compare `engine: "mcts"` against `engine: "alpha-beta"` instead of
+implicitly using only the default.
+
+- Production default: MCTS, 120 simulations, max actions 20, rollout depth 2,
+  exploration 1.35.
+- Fallback: alpha-beta remains available through `engine: "alpha-beta"` and the
+  backtest `--baseline-engine` / `--candidate-engine` flags.
+- Local promotion tournament: MCTS 120 vs alpha-beta depth 3, 16 games, MCTS
+  100%, alpha-beta 0%, errors 0.
+- Reverse confirmation: MCTS baseline vs alpha-beta candidate, 8 games, MCTS
+  87.5%, alpha-beta 12.5%, errors 0.
+- API-mode local smoke: MCTS vs alpha-beta, 2 games, MCTS 100%, errors 0.
+- Verification: 38 unit tests passed; `py_compile` passed for web, alpha-beta,
+  MCTS, and backtest modules.
 
 Version `2026.06.06.02` improves the production alpha-beta backend with audited
 tempo and delay-wall tuning.

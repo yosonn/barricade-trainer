@@ -129,11 +129,24 @@ class BarricadeTrainerTests(unittest.TestCase):
         state = b.state_from_history("e2 e8 e3 e7")
         payload = web.state_payload(state, "red", 0.05, 2, recommend_for_turn=True)
         analysis = payload["analysis"]
-        self.assertEqual(analysis["engine"], "alpha-beta")
+        self.assertEqual(analysis["engine"], "mcts")
         self.assertEqual(analysis["perspective"], state.turn)
         self.assertGreaterEqual(len(analysis["candidates"]), 1)
         self.assertIn("action", analysis["candidates"][0])
         self.assertIn("strategy", analysis)
+
+    def test_state_payload_can_use_alpha_beta_engine(self):
+        state = b.state_from_history("e2 e8 e3 e7")
+        payload = web.state_payload(
+            state,
+            "red",
+            0.05,
+            2,
+            engine_kind="alpha-beta",
+            recommend_for_turn=True,
+        )
+        self.assertEqual(payload["analysis"]["engine"], "alpha-beta")
+        self.assertIn(payload["recommendation"], payload["legal_actions"])
 
     def test_loss_audit_helpers_identify_side_and_distance_delta(self):
         record = {"red_engine": "candidate", "blue_engine": "baseline"}

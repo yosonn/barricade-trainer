@@ -8,11 +8,17 @@ from pathlib import Path
 from urllib.parse import unquote
 
 import barricade_trainer as engine
+import barricade_mcts
 
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
-APP_VERSION = "2026.06.06.02"
+APP_VERSION = "2026.06.06.03"
+DEFAULT_ENGINE = "mcts"
+DEFAULT_MCTS_SIMULATIONS = 120
+DEFAULT_MCTS_MAX_ACTIONS = 20
+DEFAULT_MCTS_ROLLOUT_DEPTH = 2
+DEFAULT_MCTS_EXPLORATION = 1.35
 
 
 def win_rate_from_score(score: float) -> float:
@@ -112,6 +118,7 @@ def analysis_payload(
     state: engine.State,
     search_time: float,
     depth: int,
+    engine_kind: str,
     recommendation: str | None,
     score: float | None,
     searched_depth: int | None,
@@ -126,7 +133,7 @@ def analysis_payload(
     ]
     avoided = sorted(avoid_actions or set())
     return {
-        "engine": "alpha-beta",
+        "engine": engine_kind,
         "perspective": perspective,
         "opponent": opp,
         "search_time": search_time,
@@ -143,14 +150,43 @@ def analysis_payload(
     }
 
 
+def recommend_action(
+    state: engine.State,
+    search_time: float,
+    depth: int,
+    engine_kind: str,
+    avoid_actions: set[str] | None,
+    seed: int = 0,
+) -> tuple[str, float, int]:
+    if engine_kind == "mcts":
+        return barricade_mcts.search_mcts(
+            state,
+            time_limit=search_time,
+            simulations=DEFAULT_MCTS_SIMULATIONS,
+            max_actions=DEFAULT_MCTS_MAX_ACTIONS,
+            exploration=DEFAULT_MCTS_EXPLORATION,
+            rollout_depth=DEFAULT_MCTS_ROLLOUT_DEPTH,
+            avoid_actions=avoid_actions,
+            seed=seed,
+        )
+    return engine.search_best(
+        state,
+        time_limit=search_time,
+        max_depth=depth,
+        avoid_actions=avoid_actions,
+    )
+
+
 def state_payload(
     state: engine.State,
     user_side: str,
     search_time: float,
     depth: int,
+    engine_kind: str = DEFAULT_ENGINE,
     recommend_for_turn: bool = False,
     start_turn: str = "red",
     avoid_actions: set[str] | None = None,
+    mcts_seed: int = 0,
 ) -> dict:
     red_dist, red_path = engine.movement_path(state, "red")
     blue_dist, blue_path = engine.movement_path(state, "blue")
@@ -163,11 +199,13 @@ def state_payload(
     searched_depth = None
     recommend_side = state.turn if recommend_for_turn else user_side
     if state.turn == recommend_side and actions:
-        recommendation, score, searched_depth = engine.search_best(
+        recommendation, score, searched_depth = recommend_action(
             state,
-            time_limit=search_time,
-            max_depth=depth,
-            avoid_actions=avoid_actions,
+            search_time,
+            depth,
+            engine_kind,
+            avoid_actions,
+            seed=mcts_seed,
         )
 
     return {
@@ -202,6 +240,7 @@ def state_payload(
             state,
             search_time,
             depth,
+            engine_kind,
             recommendation,
             score,
             searched_depth,
@@ -269,9 +308,13 @@ class Handler(SimpleHTTPRequestHandler):
                 raise ValueError("start_turn must be red or blue")
             search_time = max(0.05, min(float(payload.get("time", 0.5)), 3.0))
             depth = max(1, min(int(payload.get("depth", 3)), 5))
+            engine_kind = str(payload.get("engine", DEFAULT_ENGINE))
+            if engine_kind not in {"alpha-beta", "mcts"}:
+                raise ValueError("engine must be alpha-beta or mcts")
             recommend_for_turn = bool(payload.get("recommend_for_turn", False))
             state = engine.state_from_history(history, start_turn=start_turn)
             avoid_actions = recent_reversal_avoid_actions(history, start_turn)
+            mcts_seed = len(engine.tokenize_history(history))
             self.write_json({
                 "ok": True,
                 "state": state_payload(
@@ -279,9 +322,11 @@ class Handler(SimpleHTTPRequestHandler):
                     user_side,
                     search_time,
                     depth,
+                    engine_kind,
                     recommend_for_turn,
                     start_turn,
                     avoid_actions,
+                    mcts_seed,
                 ),
             })
         except Exception as exc:

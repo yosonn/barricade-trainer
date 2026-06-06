@@ -475,3 +475,45 @@ Decision:
 - Keep production on alpha-beta for `2026.06.06.02`.
 - Treat MCTS 120 as the next promotion candidate, but require a larger
   confirmation tournament and loss audit before changing the web/API default.
+
+## 2026.06.06.03 MCTS Production Promotion Segment
+
+Production backend now defaults to MCTS. Alpha-beta remains available as a
+fallback engine through the API and backtest flags.
+
+Changes:
+
+- Imported `barricade_mcts` in `barricade_web.py`.
+- Added production MCTS defaults: 120 simulations, max actions 20, rollout depth
+  2, exploration 1.35.
+- Added `recommend_action()` to dispatch between MCTS and alpha-beta.
+- `/api/analyze` now accepts `engine: "mcts"` or `engine: "alpha-beta"`.
+- `state.analysis.engine` reports the active engine.
+- Backtest API mode now sends the requested engine kind to `/api/analyze`.
+- Bumped app/cache version to `2026.06.06.03`.
+
+Promotion evidence:
+
+- Local MCTS 120 vs alpha-beta depth 3, 16 games: MCTS 100%, alpha-beta 0%,
+  errors 0.
+- Reverse setup, MCTS baseline vs alpha-beta candidate, 8 games: MCTS 87.5%,
+  alpha-beta 12.5%, errors 0.
+- MCTS 80 and MCTS 160 short checks both scored 8/8 against alpha-beta depth 3.
+- MCTS lost only 1 game in the reverse check; loss audit top regret was 3.0,
+  while alpha-beta losses included much larger tactical divergences.
+
+Verification:
+
+- 38 Python unit tests passed.
+- `py_compile` passed for `barricade_web.py`, `barricade_trainer.py`,
+  `barricade_mcts.py`, and `tools/barricade_backtest/backtest_loop.py`.
+- Local HTTP smoke confirmed default API analysis uses MCTS, explicit
+  `engine: "alpha-beta"` uses alpha-beta, and version is `2026.06.06.03`.
+- API-mode local smoke, MCTS vs alpha-beta, 2 games: MCTS 100%, errors 0.
+
+Risk note:
+
+- MCTS is now stronger in the measured promotion set, but it is still
+  stochastic/tree-search based and should be monitored with larger tournaments.
+  Keep alpha-beta fallback available until MCTS has broader production-game
+  evidence.

@@ -7,6 +7,7 @@ import barricade_trainer as b
 import barricade_expert as expert
 import barricade_web as web
 from tools.barricade_backtest import audit_losses
+from tools.barricade_external import live_sync_core
 
 
 class BarricadeTrainerTests(unittest.TestCase):
@@ -317,6 +318,18 @@ class BarricadeTrainerTests(unittest.TestCase):
         my_delta, opp_delta = audit_losses.distance_delta(state, "e4", state.turn)
         self.assertEqual(my_delta, 1)
         self.assertEqual(opp_delta, 0)
+
+    def test_live_sync_extracts_moves_field_history(self):
+        text = '{"moves":"e2,e8,e3,e7,hd5"}'
+        candidate = live_sync_core.choose_best_history(text, "red")
+        self.assertTrue(candidate.valid)
+        self.assertEqual(candidate.history, ["e2", "e8", "e3", "e7", "hd5"])
+
+    def test_live_sync_repairs_plain_text_by_legal_subsequence(self):
+        text = "board labels a1 b1 c1 moves e2 e8 e3 e7 bad e4"
+        candidate = live_sync_core.choose_best_history(text, "red")
+        self.assertTrue(candidate.valid)
+        self.assertEqual(candidate.history[-5:], ["e2", "e8", "e3", "e7", "e4"])
 
     def test_blue_preserves_last_walls_when_race_is_winning(self):
         history = (

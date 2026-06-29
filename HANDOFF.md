@@ -571,6 +571,29 @@ Verification:
   `barricade_frontend/ai.js`.
 - Live Expert API blue-first smoke returned local `e8` instead of illegal
   blue-side `e2`.
+
+## 2026.06.30.06 Live Practice Synchronizer Segment
+
+Changes:
+
+- Added `tools/barricade_external/live_sync_core.py` to extract candidate move
+  histories from page/network text, validate them with local rules, repair noisy
+  observations into the longest legal subsequence, and produce recommendations.
+- Added `tools/barricade_external/live_sync_assistant.py` as a CLI entrypoint
+  for pasted histories or raw observations.
+- Added `tools/barricade_external/barricade_gg_live_bridge.js` as an optional
+  Playwright browser bridge that opens Barricade.gg, watches page text, storage,
+  fetch responses, and WebSocket frames, and prints/copies the recommended move.
+- The bridge is assist-only by default and intentionally does not auto-click
+  live human games; use it for practice synchronization and transcription-error
+  prevention.
+- Bumped docs current status to `2026.06.30.06`.
+
+Verification:
+
+- Added live-sync extraction tests for `moves` payloads and noisy page text.
+- Run Python unit tests, Python compile checks, Node syntax checks, and a CLI
+  smoke before release.
 - Local HTTP smoke confirmed default `hybrid` plus explicit `mcts` and
   `alpha-beta` engine selection all work.
 - Hybrid vs MCTS, 8 games: 50% / 50%, errors 0.

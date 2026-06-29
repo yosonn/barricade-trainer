@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.30.05
+## Current Status: 2026.06.30.06
 
 The production web/API backend now defaults to a hybrid engine. It routes to
 MCTS for general midgame planning, and switches to alpha-beta for tactical
@@ -15,6 +15,35 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.30.06` adds the first safe Barricade.gg live-practice
+synchronizer. `tools/barricade_external/live_sync_assistant.py` can read a
+pasted move history or raw page/network text, reconstruct the longest legal
+game history, infer red-first vs blue-first when possible, and ask
+Hybrid/MCTS/Alpha-Beta/Expert for the next move. The optional browser bridge
+`tools/barricade_external/barricade_gg_live_bridge.js` opens Barricade.gg in a
+persistent headed browser profile, watches page text, storage, fetch responses,
+and WebSocket frames, then prints the current recommendation. It defaults to
+assist-only mode and intentionally does not auto-click live human games.
+
+Quick CLI check:
+
+```powershell
+& 'C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  tools\barricade_external\live_sync_assistant.py `
+  --history "e2 e8 e3 e7" `
+  --engine hybrid
+```
+
+Browser bridge, after installing Playwright for Node:
+
+```powershell
+npm install -D playwright
+node tools\barricade_external\barricade_gg_live_bridge.js `
+  --python "C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" `
+  --engine expert `
+  --copy
+```
 
 Version `2026.06.30.05` fixes Expert mode when the top player/blue side starts
 first. The Barricade.gg Expert API uses the standard red-first coordinate view,

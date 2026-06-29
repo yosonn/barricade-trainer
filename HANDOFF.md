@@ -627,6 +627,20 @@ Changes:
 Verification:
 
 - Run frontend Node syntax checks and Python regression tests before release.
+
+## 2026.06.30.09 Expert Policy Audit Segment
+
+Changes:
+
+- Added `tools/barricade_external/expert_policy_audit.py` to compare any
+  supplied history against live Barricade.gg Expert decisions and the local
+  engine.
+- The tool writes JSON/Markdown disagreement reports for future Expert behavior
+  distillation, opening-book extraction, and regression-test generation.
+
+Verification:
+
+- Run Python compile checks, Python unit tests, and a no-expert audit smoke.
 - Local HTTP smoke confirmed default `hybrid` plus explicit `mcts` and
   `alpha-beta` engine selection all work.
 - Hybrid vs MCTS, 8 games: 50% / 50%, errors 0.

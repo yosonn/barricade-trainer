@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.30.08
+## Current Status: 2026.06.30.09
 
 The production web/API backend now defaults to a hybrid engine. It routes to
 MCTS for general midgame planning, and switches to alpha-beta for tactical
@@ -15,6 +15,11 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.30.09` adds `tools/barricade_external/expert_policy_audit.py`.
+It compares supplied histories against live Barricade.gg Expert decisions and
+the local engine, producing JSON/Markdown disagreement reports that can be used
+to distill Expert behavior into local heuristics and regression tests.
 
 Version `2026.06.30.08` keeps the last computer move visible during the
 player's turn in the AI battle page. This preserves the action code the user

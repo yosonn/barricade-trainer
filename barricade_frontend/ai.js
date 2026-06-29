@@ -47,6 +47,7 @@ let lastWallTouchAt = 0;
 let lastComputerAction = null;
 let autoBusy = false;
 let replayBusy = false;
+let analyzeRequestId = 0;
 
 const t = {
   red: "\u7d05\u65b9",
@@ -172,35 +173,59 @@ function syncSidesForMode() {
 async function fetchAnalysis(history, options = {}) {
   const shouldRecommend = options.recommendForTurn ?? true;
   const params = shouldRecommend ? activeSearchParams(history) : { time: 0.05, depth: 1, engine: engineSelect.value };
-  const response = await fetch("/api/analyze", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      history,
-      user_side: humanSide,
-      start_turn: currentStartTurn(),
-      recommend_for_turn: shouldRecommend,
-      time: params.time,
-      depth: params.depth,
-      engine: params.engine,
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutMs = Math.max(8000, Number(params.time || 0) * 1000 + 5000);
+  const timeoutId = window.setTimeout(() => controller.abort("timeout"), timeoutMs);
+  let response;
+  try {
+    response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        history,
+        user_side: humanSide,
+        start_turn: currentStartTurn(),
+        recommend_for_turn: shouldRecommend,
+        time: params.time,
+        depth: params.depth,
+        engine: params.engine,
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
   return response.json();
 }
 
+function analysisErrorMessage(error) {
+  if (error?.name === "AbortError" || error === "timeout") {
+    return "分析逾時，已停止本次思考。請再試一次，或改用較短秒數/其他模型。";
+  }
+  return `分析失敗：${error?.message || error}`;
+}
+
 async function analyze(message = "") {
+  const requestId = ++analyzeRequestId;
   stopReplay();
   replayIndex = null;
   lastComputerAction = null;
   statusText.textContent = t.loading;
-  const payload = await fetchAnalysis(historyEl.value);
-  if (!payload.ok) {
-    statusText.textContent = `${t.inputError}${payload.error}`;
-    return;
+  try {
+    const payload = await fetchAnalysis(historyEl.value);
+    if (requestId !== analyzeRequestId) return;
+    if (!payload.ok) {
+      statusText.textContent = `${t.inputError}${payload.error}`;
+      return;
+    }
+    latest = payload.state;
+    render(latest);
+    if (message) statusText.textContent = message;
+  } catch (error) {
+    if (requestId !== analyzeRequestId) return;
+    statusText.textContent = analysisErrorMessage(error);
+    stopAuto();
   }
-  latest = payload.state;
-  render(latest);
-  if (message) statusText.textContent = message;
 }
 
 async function tryCommit(actions, message = "", options = {}) {
@@ -213,20 +238,29 @@ async function tryCommit(actions, message = "", options = {}) {
   }
   const candidateHistory = historyWithActions(actions);
   const nextThinkSide = sideToMoveForHistory(candidateHistory);
+  const requestId = ++analyzeRequestId;
   statusText.textContent = `${sideName(nextThinkSide)}\u601d\u8003\u4e2d...`;
-  const payload = await fetchAnalysis(candidateHistory);
-  if (!payload.ok) {
-    statusText.textContent = `${t.invalid}${payload.error}`;
-    actionInput.focus();
+  try {
+    const payload = await fetchAnalysis(candidateHistory);
+    if (requestId !== analyzeRequestId) return false;
+    if (!payload.ok) {
+      statusText.textContent = `${t.invalid}${payload.error}`;
+      actionInput.focus();
+      return false;
+    }
+    historyEl.value = candidateHistory;
+    actionInput.value = "";
+    latest = payload.state;
+    lastComputerAction = options.computerAction || null;
+    render(latest);
+    if (message) statusText.textContent = message;
+    return true;
+  } catch (error) {
+    if (requestId !== analyzeRequestId) return false;
+    statusText.textContent = analysisErrorMessage(error);
+    stopAuto();
     return false;
   }
-  historyEl.value = candidateHistory;
-  actionInput.value = "";
-  latest = payload.state;
-  lastComputerAction = options.computerAction || null;
-  render(latest);
-  if (message) statusText.textContent = message;
-  return true;
 }
 
 function render(state) {
@@ -502,17 +536,25 @@ function stopReplay() {
 }
 
 async function renderReplay(index) {
+  const requestId = ++analyzeRequestId;
   stopAuto();
   lastComputerAction = null;
   const tokens = historyTokens();
   replayIndex = clamp(index, 0, tokens.length);
-  const payload = await fetchAnalysis(tokens.slice(0, replayIndex).join(" "), { recommendForTurn: false });
-  if (!payload.ok) {
-    statusText.textContent = `${t.inputError}${payload.error}`;
-    return;
+  try {
+    const payload = await fetchAnalysis(tokens.slice(0, replayIndex).join(" "), { recommendForTurn: false });
+    if (requestId !== analyzeRequestId) return;
+    if (!payload.ok) {
+      statusText.textContent = `${t.inputError}${payload.error}`;
+      return;
+    }
+    render(payload.state);
+    statusText.textContent = `\u56de\u653e\u4e2d\uff1a\u7b2c ${replayIndex} / ${tokens.length} \u624b`;
+  } catch (error) {
+    if (requestId !== analyzeRequestId) return;
+    statusText.textContent = analysisErrorMessage(error);
+    stopReplay();
   }
-  render(payload.state);
-  statusText.textContent = `\u56de\u653e\u4e2d\uff1a\u7b2c ${replayIndex} / ${tokens.length} \u624b`;
 }
 
 function toggleReplay() {

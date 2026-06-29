@@ -13,7 +13,7 @@ import barricade_mcts
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
-APP_VERSION = "2026.06.06.04"
+APP_VERSION = "2026.06.30.01"
 DEFAULT_ENGINE = "hybrid"
 DEFAULT_MCTS_SIMULATIONS = 120
 DEFAULT_MCTS_MAX_ACTIONS = 20
@@ -299,6 +299,37 @@ def recent_reversal_avoid_actions(history: str, start_turn: str) -> set[str]:
     return set(recent_positions.get(state.turn, []))
 
 
+def recent_state_repeat_avoid_actions(
+    history: str,
+    start_turn: str,
+    window: int = 12,
+) -> set[str]:
+    tokens = engine.tokenize_history(history)
+    state = engine.State(turn=start_turn)
+    states = [state]
+    for token in tokens:
+        state = engine.apply_action(state, token)
+        states.append(state)
+
+    recent_keys = {past.key() for past in states[-(window + 1):-1]}
+    if not recent_keys:
+        return set()
+
+    avoid: set[str] = set()
+    for action in engine.ordered_actions(state, limit_walls=18):
+        child = engine.apply_action(state, action)
+        if child.key() in recent_keys:
+            avoid.add(action)
+    return avoid
+
+
+def root_avoid_actions(history: str, start_turn: str) -> set[str]:
+    return recent_reversal_avoid_actions(history, start_turn) | recent_state_repeat_avoid_actions(
+        history,
+        start_turn,
+    )
+
+
 class Handler(SimpleHTTPRequestHandler):
     def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
@@ -342,7 +373,7 @@ class Handler(SimpleHTTPRequestHandler):
                 raise ValueError("engine must be alpha-beta, mcts, or hybrid")
             recommend_for_turn = bool(payload.get("recommend_for_turn", False))
             state = engine.state_from_history(history, start_turn=start_turn)
-            avoid_actions = recent_reversal_avoid_actions(history, start_turn)
+            avoid_actions = root_avoid_actions(history, start_turn)
             mcts_seed = len(engine.tokenize_history(history))
             self.write_json({
                 "ok": True,

@@ -29,6 +29,7 @@ let editingOwnMove = false;
 let dragPreviewWall = "";
 let touchWallOrient = "";
 let lastWallTouchAt = 0;
+let analyzeRequestId = 0;
 
 const text = {
   red: "紅方",
@@ -117,18 +118,34 @@ function wallLimitMessage(actions) {
 }
 
 async function fetchAnalysis(history) {
-  const response = await fetch("/api/analyze", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      history,
-      user_side: userSide,
-      time: Number(timeLimit.value),
-      depth: Number(depthLimit.value),
-      engine: engineSelect.value,
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutMs = Math.max(8000, Number(timeLimit.value || 0) * 1000 + 5000);
+  const timeoutId = window.setTimeout(() => controller.abort("timeout"), timeoutMs);
+  let response;
+  try {
+    response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        history,
+        user_side: userSide,
+        time: Number(timeLimit.value),
+        depth: Number(depthLimit.value),
+        engine: engineSelect.value,
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
   return response.json();
+}
+
+function analysisErrorMessage(error) {
+  if (error?.name === "AbortError" || error === "timeout") {
+    return "分析逾時，已停止本次思考。請再試一次，或改用較短秒數/其他模型。";
+  }
+  return `分析失敗：${error?.message || error}`;
 }
 
 function applyAnalysis(payload) {
@@ -138,14 +155,21 @@ function applyAnalysis(payload) {
 }
 
 async function analyze(message = "") {
+  const requestId = ++analyzeRequestId;
   statusText.textContent = text.loading;
-  const payload = await fetchAnalysis(historyEl.value);
-  if (!payload.ok) {
-    statusText.textContent = `${text.inputError}${payload.error}`;
-    return;
+  try {
+    const payload = await fetchAnalysis(historyEl.value);
+    if (requestId !== analyzeRequestId) return;
+    if (!payload.ok) {
+      statusText.textContent = `${text.inputError}${payload.error}`;
+      return;
+    }
+    applyAnalysis(payload);
+    if (message) statusText.textContent = message;
+  } catch (error) {
+    if (requestId !== analyzeRequestId) return;
+    statusText.textContent = analysisErrorMessage(error);
   }
-  applyAnalysis(payload);
-  if (message) statusText.textContent = message;
 }
 
 async function tryCommit(actions, messagePrefix = "") {
@@ -157,19 +181,27 @@ async function tryCommit(actions, messagePrefix = "") {
   }
 
   const candidateHistory = historyWithActions(actions);
+  const requestId = ++analyzeRequestId;
   statusText.textContent = text.loading;
-  const payload = await fetchAnalysis(candidateHistory);
-  if (!payload.ok) {
-    statusText.textContent = `${text.invalidNotSaved}${payload.error}`;
-    actionInput.focus();
+  try {
+    const payload = await fetchAnalysis(candidateHistory);
+    if (requestId !== analyzeRequestId) return false;
+    if (!payload.ok) {
+      statusText.textContent = `${text.invalidNotSaved}${payload.error}`;
+      actionInput.focus();
+      return false;
+    }
+
+    historyEl.value = candidateHistory;
+    actionInput.value = "";
+    applyAnalysis(payload);
+    if (messagePrefix) statusText.textContent = `${messagePrefix}${actions.join(" ")}`;
+    return true;
+  } catch (error) {
+    if (requestId !== analyzeRequestId) return false;
+    statusText.textContent = analysisErrorMessage(error);
     return false;
   }
-
-  historyEl.value = candidateHistory;
-  actionInput.value = "";
-  applyAnalysis(payload);
-  if (messagePrefix) statusText.textContent = `${messagePrefix}${actions.join(" ")}`;
-  return true;
 }
 
 function render(state) {

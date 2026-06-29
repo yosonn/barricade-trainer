@@ -103,6 +103,24 @@ class BarricadeTrainerTests(unittest.TestCase):
         avoid = web.recent_reversal_avoid_actions("e2 e8 e3 e7 e4 e6", "red")
         self.assertEqual(avoid, {"e1", "e2", "e3"})
 
+    def test_recent_state_repeat_avoid_actions_detects_cycle_closing_move(self):
+        history = (
+            "e2 e8 e3 e7 e4 e6 he2 e5 hc2 he5 hg2 hc5 f5 vf4 d5 ha5 ha2 vd4 "
+            "vh3 hh5 hh1 vf1 d4 hd3 c4 e4 c3 f4 d3 f3 e3 g3 hf3 h3 f3 h4 "
+            "vg5 hf6 e3 h5 f3 h4"
+        )
+        avoid = web.recent_state_repeat_avoid_actions(history, "red")
+        self.assertIn("e3", avoid)
+
+    def test_root_avoid_actions_combines_reversal_and_repeat_filters(self):
+        history = (
+            "e2 e8 e3 e7 e4 e6 he2 e5 hc2 he5 hg2 hc5 f5 vf4 d5 ha5 ha2 vd4 "
+            "vh3 hh5 hh1 vf1 d4 hd3 c4 e4 c3 f4 d3 f3 e3 g3 hf3 h3 f3 h4 "
+            "vg5 hf6 e3 h5 f3 h4"
+        )
+        avoid = web.root_avoid_actions(history, "red")
+        self.assertIn("e3", avoid)
+
     def test_search_avoids_immediate_reversal_when_alternatives_exist(self):
         history = (
             "e2 e8 e3 e7 e4 e6 d4 e5 d5 e4 d6 hc6 hc5 vd5 "
@@ -124,6 +142,17 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertIn("c4", avoid)
         best, _, _ = b.search_best(state, time_limit=0.2, max_depth=2, avoid_actions=avoid)
         self.assertEqual(best, "c4")
+
+    def test_state_repeat_filter_keeps_ai_out_of_recent_loop(self):
+        history = (
+            "e2 e8 e3 e7 e4 e6 he2 e5 hc2 he5 hg2 hc5 f5 vf4 d5 ha5 ha2 vd4 "
+            "vh3 hh5 hh1 vf1 d4 hd3 c4 e4 c3 f4 d3 f3 e3 g3 hf3 h3 f3 h4 "
+            "vg5 hf6 e3 h5 f3 h4"
+        )
+        state = b.state_from_history(history)
+        avoid = web.root_avoid_actions(history, "red")
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=3, avoid_actions=avoid)
+        self.assertNotEqual(best, "e3")
 
     def test_state_payload_includes_realtime_analysis(self):
         state = b.state_from_history("e2 e8 e3 e7")

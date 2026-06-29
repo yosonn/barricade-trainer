@@ -555,3 +555,22 @@ Verification:
 - Hybrid vs MCTS, 8 games: 50% / 50%, errors 0.
 - Hybrid vs alpha-beta depth 3, 8 games: hybrid 62.5%, alpha-beta 37.5%,
   errors 0.
+## 2026.06.30.01 Loop-Stall Hardening Segment
+
+### Why
+
+- User reported a live game where the computer appeared stuck on "thinking" in a losing midgame position.
+- Replaying the supplied history showed the engine could drift into a recent move loop, and the frontend had no timeout or fetch error recovery path, so a stalled request could leave the UI permanently showing a loading state.
+
+### What Changed
+
+- Added `recent_state_repeat_avoid_actions(...)` in `barricade_web.py` and combined it with the existing reversal filter through `root_avoid_actions(...)`.
+- Root recommendations now avoid replaying a whole board state seen in the last several plies when a better alternative exists.
+- Added request timeout and fetch error handling to both `barricade_frontend/app.js` and `barricade_frontend/ai.js`.
+- Bumped app/cache version to `2026.06.30.01`.
+
+### Verification
+
+- Added unit tests covering repeat-state detection and loop avoidance for the reported game family.
+- Confirmed the supplied history reconstructs correctly and no longer recommends the obvious cycle-closing `e3` move for red in the repeated state.
+- Frontend JS syntax checks pass after the timeout handling changes.

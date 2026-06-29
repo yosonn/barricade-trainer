@@ -158,6 +158,8 @@ def shortest_path(state: State, player: str) -> tuple[int, list[Coord]]:
 
 def movement_path(state: State, player: str) -> tuple[int, list[Coord]]:
     dist, path = movement_path_cached(state.key(), player)
+    if dist == math.inf:
+        return shortest_path(state, player)
     return dist, list(path)
 
 
@@ -950,9 +952,15 @@ def search_best(
             value = sign * static_eval(cur, perspective)
             transposition[cache_key] = value
             return value
+        actions = ranked_actions(cur, ply, wall_limit, action_limit)
+        if not actions:
+            sign = 1 if cur.turn == perspective else -1
+            value = sign * static_eval(cur, perspective)
+            transposition[cache_key] = value
+            return value
         value = -math.inf
         cut = False
-        for action in ranked_actions(cur, ply, wall_limit, action_limit):
+        for action in actions:
             child = apply_action(cur, action)
             value = max(value, -negamax(child.key(), depth - 1, -beta, -alpha, ply + 1, q_depth))
             alpha = max(alpha, value)
@@ -971,6 +979,8 @@ def search_best(
             for action in root_actions:
                 child = apply_action(state, action)
                 score = -negamax(child.key(), depth - 1, -math.inf, -alpha, 1)
+                if not math.isfinite(score):
+                    score = static_eval(child, perspective)
                 adjusted = root_adjusted_score(action, score)
                 if adjusted > local_score:
                     local_best, local_score = action, adjusted

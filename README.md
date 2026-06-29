@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.06.04
+## Current Status: 2026.06.30.01
 
 The production web/API backend now defaults to a hybrid engine. It routes to
 MCTS for general midgame planning, and switches to alpha-beta for tactical
@@ -14,6 +14,13 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.30.01` hardens live play against "thinking forever" stalls and
+recent-position loops. The frontend now aborts stuck analyze requests and
+surfaces a clear timeout error instead of leaving the UI in a permanent loading
+state. The backend also adds a recent-state repetition filter so the root move
+selection avoids stepping directly back into a board state seen in the last few
+plies.
 
 Version `2026.06.06.04` adds the hybrid model and frontend model toggle. The
 hybrid engine keeps MCTS 120 as the normal planner, but hands tactical

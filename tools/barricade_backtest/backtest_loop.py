@@ -108,7 +108,7 @@ class LocalEngineClient:
     ) -> dict[str, Any]:
         joined_history = " ".join(history)
         state = engine.state_from_history(joined_history, start_turn=start_turn)
-        avoid_actions = web.recent_reversal_avoid_actions(joined_history, start_turn)
+        avoid_actions = web.root_avoid_actions(joined_history, start_turn)
         recommendation = None
         score = None
         searched_depth = None

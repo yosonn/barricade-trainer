@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.06.04`
+Current project version: `2026.06.30.03`
 
 The tool supports two execution modes:
 
@@ -16,6 +16,16 @@ Run a short baseline-vs-candidate tournament:
 
 ```powershell
 python tools\barricade_backtest\backtest_loop.py --games 10 --baseline-depth 2 --candidate-depth 3 --time 0.05
+```
+
+Play the local model against Barricade.gg's online Expert computer:
+
+```powershell
+python tools\barricade_external\play_barricade_gg.py `
+  --difficulty expert `
+  --local-side red `
+  --local-engine hybrid `
+  --out-dir backtest_runs\barricade-gg-expert-red
 ```
 
 Run the same tournament entirely inside the local repo:
@@ -99,7 +109,46 @@ mode for verifying that the deployed service still matches expected behavior.
 
 ## Recent Verification
 
-The latest promoted project version is `2026.06.06.04`.
+The latest promoted project version is `2026.06.30.03`.
+
+Version `2026.06.30.03` adds `tools/barricade_external/play_barricade_gg.py`,
+which talks to Barricade.gg's public Socket.IO AI move flow and records external
+Expert matches as reproducible local reports. Initial Expert probes showed
+hybrid losing as red in 52 plies and as blue in 73 plies. The resulting engine
+tuning adds next-turn wall-trap scoring to alpha-beta and MCTS priors so a move
+that allows the opponent to add a severe wall detour is penalized before it is
+played. A low-wall safety valve can also prioritize a defensive wall when it
+reduces the opponent's next wall threat by at least two steps at acceptable
+route cost.
+- Verification: 47 unit tests passed; backend and tool `py_compile` passed;
+  frontend JS syntax checks passed.
+- External Expert repeat after initial tuning: local hybrid as red still lost,
+  but survived 62 plies instead of the pre-tuning 52-ply loss.
+- Local sanity: hybrid vs MCTS, 4 games, 50% / 50%, errors 0; hybrid vs
+  alpha-beta depth 3, 2 games, hybrid 100%, errors 0.
+
+Version `2026.06.30.02` aligns local backtests with the live API's root avoid
+filters and improves hybrid routing for close-contact wall-trap openings.
+
+- Local backtest mode now uses `web.root_avoid_actions(...)`, so reversal and
+  repeat-state filters match live `/api/analyze`.
+- Hybrid now routes early close pawn-contact positions with many walls to
+  alpha-beta. The reported strong-computer loss reproduced as current hybrid
+  matching the losing red moves; the new route recommends `hd4` in the critical
+  `e2 e8 e3 e7 e4 e6` family instead of the previous MCTS `he2` branch.
+- Verification: 44 unit tests passed; `py_compile` passed for web, alpha-beta,
+  MCTS, and backtest modules; `node --check` passed for frontend scripts.
+- Hybrid vs MCTS, 6 games: hybrid 66.67%, MCTS 33.33%, errors 0.
+- Hybrid vs alpha-beta depth 3, 6 games: 50% / 50%, errors 0.
+
+Version `2026.06.30.01` hardens live play against stuck thinking states and
+recent-position loops.
+
+- Frontend analyze requests now abort on timeout and show an explicit error
+  instead of leaving the UI in a permanent loading state.
+- Backend root recommendations avoid moves that recreate a recent board state.
+- Verification: 42 unit tests passed; frontend JS checks passed; local HTTP
+  smoke confirmed `app_version=2026.06.30.01`.
 
 Version `2026.06.06.04` adds the hybrid engine to both local and API-mode
 backtests. The API mode now forwards the requested engine kind, and the default

@@ -56,13 +56,14 @@ def action_prior_score(state: engine.State, action: str) -> float:
     after_opp = engine.movement_path(child, engine.opponent(perspective))[0]
     race_delta = (before_my - after_my) * 120 + (after_opp - before_opp) * 140
     race_score = engine.pawn_race_adjustment(state, action, perspective)
+    threat_score = engine.future_wall_threat_adjustment(state, action, perspective)
     if (
         engine.is_pawn_action(action)
         and state.walls_left(perspective) + state.walls_left(engine.opponent(perspective)) <= 3
         and after_my > before_my
     ):
         race_score -= 800 + (after_my - before_my) * 250
-    return engine.action_score(state, action, perspective) + race_delta + race_score
+    return engine.action_score(state, action, perspective) + race_delta + race_score + threat_score
 
 
 def race_filtered_actions(

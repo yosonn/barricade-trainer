@@ -555,6 +555,67 @@ Verification:
 - Hybrid vs MCTS, 8 games: 50% / 50%, errors 0.
 - Hybrid vs alpha-beta depth 3, 8 games: hybrid 62.5%, alpha-beta 37.5%,
   errors 0.
+## 2026.06.30.03 Barricade.gg Expert Harness and Next-Wall Threat Segment
+
+### Why
+
+- The user wanted Codex to play the public `barricade.gg` computer directly so
+  manual strongest-computer games no longer need to be pasted by hand.
+- Inspecting the site showed the Expert computer asks
+  `https://api.barricade.gg/ai` for `ai:get_move` over Socket.IO with
+  `{moves, difficulty}`.
+- Two external Expert games showed the same strategic issue: our model chased
+  immediate pawn progress and allowed the opponent's next wall to add 4-6 path
+  steps.
+
+### What Changed
+
+- Added `tools/barricade_external/play_barricade_gg.py` to play local
+  alpha-beta/MCTS/hybrid against Barricade.gg's online Expert service using only
+  Python standard-library HTTP polling.
+- Added `future_wall_threat_adjustment(...)` and wired it into alpha-beta move
+  ordering, alpha-beta root adjustment, and MCTS priors.
+- Added `urgent_defensive_wall_actions(...)` as a low-wall safety valve for
+  positions where one remaining wall can defuse a severe next-turn trap.
+- Added regression tests for the red `ve5` trap and blue `hc1` endgame trap
+  found from the external Expert games.
+- Bumped app/cache version to `2026.06.30.03`.
+
+### Verification
+
+- External Expert before tuning:
+  - Local hybrid as red lost to Barricade.gg Expert in 52 plies.
+  - Local hybrid as blue lost to Barricade.gg Expert in 73 plies.
+- The new regression tests reject the trap-feeding moves and keep the resulting
+  next-wall threat below the previous danger threshold.
+- 47 Python unit tests passed after the safety-valve narrowing.
+- `py_compile` passed for backend, MCTS, backtest loop, and external Expert
+  harness; frontend JS syntax checks passed.
+- Local sanity after final narrowing: hybrid vs MCTS, 4 games, 50% / 50%,
+  errors 0; hybrid vs alpha-beta depth 3, 2 games, hybrid 100%, errors 0.
+- External Expert remains stronger: the post-tuning red-side run still lost,
+  but lasted 62 plies versus the initial 52-ply loss.
+
+## 2026.06.30.02 Strong-Computer Wall-Trap Segment
+
+### Why
+
+- User reported a severe loss against the strongest built-in game AI while using our AI recommendations as the red side.
+- Replaying the game showed our current hybrid model matched red's losing moves almost exactly. The key failure happened in the early close-contact wall fight where MCTS stayed in control and allowed blue to expand red's path from 8 to 18 steps by ply 19.
+
+### What Changed
+
+- Hybrid now routes close pawn-contact openings with many walls to alpha-beta.
+- This targets positions where both pawns are near each other, both sides still have wall resources, and short-horizon MCTS can underestimate wall-trap setup moves.
+- Local backtests now use `web.root_avoid_actions(...)`, matching the live API's reversal and repeat-state filters.
+- Bumped app/cache version to `2026.06.30.02`.
+
+### Verification
+
+- Added regression tests for the reported strong-computer trap family.
+- The opening state `e2 e8 e3 e7 e4 e6` now resolves hybrid to alpha-beta and recommends `hd4`.
+- The reported path after blue's trap setup no longer recommends the previous low-value `hg1` continuation.
+
 ## 2026.06.30.01 Loop-Stall Hardening Segment
 
 ### Why

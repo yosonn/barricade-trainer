@@ -191,7 +191,51 @@ class BarricadeTrainerTests(unittest.TestCase):
         payload = web.state_payload(state, "blue", 0.05, 3, recommend_for_turn=True)
         self.assertEqual(payload["analysis"]["engine"], "hybrid")
         self.assertEqual(payload["analysis"]["resolved_engine"], "alpha-beta")
-        self.assertEqual(payload["recommendation"], "b7")
+        self.assertEqual(payload["recommendation"], "a6")
+
+    def test_hybrid_uses_alpha_beta_for_close_wall_trap_opening(self):
+        state = b.state_from_history("e2 e8 e3 e7 e4 e6")
+        payload = web.state_payload(state, "red", 0.05, 3, recommend_for_turn=True)
+        self.assertEqual(payload["analysis"]["resolved_engine"], "alpha-beta")
+        self.assertEqual(payload["recommendation"], "hd4")
+
+    def test_reported_strong_computer_game_avoids_mcts_opening_trap(self):
+        history = "e2 e8 e3 e7 e4 e6 he2 hf6"
+        state = b.state_from_history(history)
+        payload = web.state_payload(state, "red", 0.05, 3, recommend_for_turn=True)
+        self.assertEqual(payload["analysis"]["resolved_engine"], "alpha-beta")
+        self.assertEqual(payload["recommendation"], "hd4")
+
+    def test_barricade_gg_expert_red_avoids_next_wall_trap(self):
+        history = "e2 e8 e3 e7 e4 e6 hd4 hf6 hf3 ha7 f4 hh6"
+        state = b.state_from_history(history)
+        avoid = web.root_avoid_actions(history, "red")
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=4, avoid_actions=avoid)
+        child = b.apply_action(state, best)
+        threat, _ = b.opponent_wall_threat(child, "red")
+        self.assertNotEqual(best, "f5")
+        self.assertLess(threat, 5)
+
+    def test_barricade_gg_expert_blue_avoids_endgame_wall_trap(self):
+        history = "e2 e8 e3 he8 e4 hc8 ha1 e7 e5 hg8 f5 e6 vd1 e5 he4 d5 vd3"
+        state = b.state_from_history(history)
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=4)
+        child = b.apply_action(state, best)
+        threat, _ = b.opponent_wall_threat(child, "blue")
+        self.assertNotEqual(best, "d4")
+        self.assertLess(threat, 4)
+
+    def test_barricade_gg_expert_red_spends_final_wall_to_defuse_trap(self):
+        history = (
+            "e2 e8 e3 e7 e4 e6 hd4 hf6 hf3 hh6 f4 e5 e4 hd6 d4 vc3 "
+            "e4 hb6 vc6 f5 hd1 ha2 vf5 e5 hb4 ha5 e3 f5 hf4 e5 hb1 hd2 vb2 hf2"
+        )
+        state = b.state_from_history(history)
+        best, _, _ = b.search_best(state, time_limit=0.2, max_depth=4)
+        child = b.apply_action(state, best)
+        threat, _ = b.opponent_wall_threat(child, "red")
+        self.assertEqual(best, "hf1")
+        self.assertLessEqual(threat, 2)
 
     def test_loss_audit_helpers_identify_side_and_distance_delta(self):
         record = {"red_engine": "candidate", "blue_engine": "baseline"}

@@ -1,12 +1,12 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.30.01
+## Current Status: 2026.06.30.03
 
 The production web/API backend now defaults to a hybrid engine. It routes to
 MCTS for general midgame planning, and switches to alpha-beta for tactical
-endgames, immediate goal threats, and low-wall races. The API and frontend now
-support explicit model selection through `engine: "hybrid"`, `engine: "mcts"`,
-or `engine: "alpha-beta"`.
+endgames, immediate goal threats, low-wall races, and close-contact wall-trap
+openings. The API and frontend now support explicit model selection through
+`engine: "hybrid"`, `engine: "mcts"`, or `engine: "alpha-beta"`.
 
 New backtest options:
 
@@ -14,6 +14,40 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.30.03` adds an external Barricade.gg Expert test harness and
+improves the backend against next-turn wall traps. The new tool calls the same
+public Socket.IO move flow used by `barricade.gg/computer` and can play our
+local model against the online Expert bot without manual browser input:
+
+```powershell
+python tools\barricade_external\play_barricade_gg.py `
+  --difficulty expert `
+  --local-side red `
+  --local-engine hybrid
+```
+
+Two Expert games were captured before tuning: local hybrid lost as red in 52
+plies and as blue in 73 plies. The repeated failure pattern was clear: our
+model overvalued immediate pawn progress and allowed the Expert bot to use the
+next wall to add 4-6 path steps. The engine now scores this next-turn wall
+threat directly in alpha-beta ordering, alpha-beta root adjustment, and MCTS
+priors. It also has a low-wall safety valve that can spend a final wall when it
+defuses a severe next-turn trap without increasing the engine's own route.
+Verification: 47 unit tests passed; `py_compile` passed for the backend,
+MCTS, backtest, and external Expert harness; frontend `node --check` passed.
+After the first tuning pass, a repeat red-side Expert run lasted 62 plies
+instead of the previous 52, but still lost, so Barricade.gg Expert remains the
+next target opponent rather than a solved benchmark. Local sanity checks:
+hybrid vs MCTS, 4 games, 50% / 50%, errors 0; hybrid vs alpha-beta depth 3,
+2 games, 100% / 0%, errors 0.
+
+Version `2026.06.30.02` improves the reported strong-computer matchup failure.
+The reviewed game showed current hybrid exactly following red's losing choices
+while MCTS controlled the early wall fight. Hybrid now routes close pawn-contact
+openings with many walls to alpha-beta, which chooses the stronger `hd4` plan
+instead of the previous `he2` branch. Local backtests also now use the same
+repeat-state avoidance as the live API.
 
 Version `2026.06.30.01` hardens live play against "thinking forever" stalls and
 recent-position loops. The frontend now aborts stuck analyze requests and

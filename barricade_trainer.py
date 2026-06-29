@@ -449,6 +449,44 @@ def defensive_wall_adjustment(state: State, action: str, perspective: str) -> fl
     return score
 
 
+def future_wall_threat_adjustment(state: State, action: str, perspective: str) -> float:
+    """Penalize moves that hand the opponent a high-damage wall next turn."""
+    opp = opponent(perspective)
+    if state.walls_left(opp) <= 0:
+        return 0.0
+
+    child = apply_action(state, action)
+    before_threat, _ = opponent_wall_threat(state, perspective)
+    after_threat, _ = opponent_wall_threat(child, perspective)
+    if before_threat < 3 and after_threat < 4:
+        return 0.0
+
+    my_dist, _ = movement_path(state, perspective)
+    opp_dist, _ = movement_path(state, opp)
+    new_my_dist, _ = movement_path(child, perspective)
+    score = 0.0
+
+    if before_threat >= 3 and after_threat < before_threat:
+        score += (before_threat - after_threat) * 150
+
+    if after_threat >= 4:
+        score -= (after_threat - 3) * 170
+        score -= max(0, after_threat - before_threat) * 230
+        if is_pawn_action(action):
+            score -= 130
+        if new_my_dist <= 4:
+            score -= (after_threat - 2) * 240
+        if new_my_dist <= opp_dist + 3:
+            score -= 180
+        if state.walls_left(perspective) <= 2:
+            score -= 180
+
+    if new_my_dist > my_dist:
+        self_delay = new_my_dist - my_dist
+        score -= self_delay * (160 if after_threat < before_threat else 90)
+    return score
+
+
 def opening_tempo_adjustment(state: State, action: str, perspective: str) -> float:
     """Avoid spending early walls on low-impact delay when direct progress is available."""
     opp = opponent(perspective)
@@ -583,6 +621,46 @@ def safe_pawn_race_progress_actions(state: State, perspective: str) -> list[str]
     return progress_actions
 
 
+def urgent_defensive_wall_actions(state: State, perspective: str) -> list[str]:
+    """Find low-cost walls that defuse a severe next-turn opponent wall trap."""
+    if state.walls_left(perspective) <= 0 or state.walls_left(opponent(perspective)) <= 0:
+        return []
+
+    before_threat, _ = opponent_wall_threat(state, perspective)
+    if before_threat < 4:
+        return []
+
+    my_dist, _ = movement_path(state, perspective)
+    opp_dist, _ = movement_path(state, opponent(perspective))
+    if my_dist <= 4 and opp_dist >= my_dist + 6:
+        return []
+    if opp_dist <= 4 and my_dist >= opp_dist + 4:
+        return []
+    urgent = before_threat >= 6 or state.walls_left(perspective) <= 2 or my_dist >= opp_dist + 4
+    if not urgent:
+        return []
+
+    candidates: list[tuple[float, str]] = []
+    for wall in legal_walls(state, focused=True):
+        action = wall_to_text(wall)
+        child = apply_action(state, action)
+        after_threat, _ = opponent_wall_threat(child, perspective)
+        new_my_dist, _ = movement_path(child, perspective)
+        new_opp_dist, _ = movement_path(child, opponent(perspective))
+        self_delay = new_my_dist - my_dist
+        opp_delay = new_opp_dist - opp_dist
+        threat_reduction = before_threat - after_threat
+        if threat_reduction < 2:
+            continue
+        if self_delay > 1 and threat_reduction < self_delay + 2:
+            continue
+        score = threat_reduction * 240 + max(0, opp_delay) * 80 - max(0, self_delay) * 220
+        candidates.append((score, action))
+
+    candidates.sort(reverse=True)
+    return [action for _, action in candidates[:4]]
+
+
 def should_convert_race_by_sprinting(state: State, perspective: str) -> bool:
     my_dist, _ = movement_path(state, perspective)
     opp_dist, _ = movement_path(state, opponent(perspective))
@@ -599,6 +677,15 @@ def should_simplify_corridor_race(state: State, perspective: str) -> bool:
 
 
 def opening_book_action(state: State) -> str | None:
+    if (
+        state.turn == "red"
+        and state.red == text_to_coord("e4")
+        and state.blue == text_to_coord("e6")
+        and state.red_walls >= 9
+        and state.blue_walls >= 9
+        and len(state.walls) <= 2
+    ):
+        return "hd4"
     if (
         state.turn == "blue"
         and state.red == text_to_coord("e4")
@@ -721,6 +808,7 @@ def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
         score += opening_tempo_adjustment(state, action, perspective)
         score += race_conversion_adjustment(state, action, perspective)
         score += pawn_race_adjustment(state, action, perspective)
+        score += future_wall_threat_adjustment(state, action, perspective)
         if len(my_path) > 1 and pos == my_path[1]:
             score += 80
         if opp_dist <= 1 and pos[1] != GOAL_ROW[perspective]:
@@ -740,6 +828,7 @@ def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
         gain += wall_resource_adjustment(state, action, state.turn)
         gain += opening_tempo_adjustment(state, action, state.turn)
         gain += race_conversion_adjustment(state, action, state.turn)
+        gain += future_wall_threat_adjustment(state, action, state.turn)
         if opp_delay <= 0:
             gain -= 120
         if opp_dist <= 1 and opp_delay > 0:
@@ -778,6 +867,9 @@ def search_best(
 
     root_actions = ordered_actions(state, limit_walls=16)[:ROOT_ACTION_LIMIT]
     root_my_dist, _ = movement_path(state, perspective)
+    urgent_walls = urgent_defensive_wall_actions(state, perspective)
+    if urgent_walls:
+        root_actions = urgent_walls + [action for action in root_actions if action not in urgent_walls]
     defensive_root_walls = []
     if (
         root_my_dist <= 4
@@ -802,6 +894,11 @@ def search_best(
     ]
     if winning_moves:
         return winning_moves[0], 100000, 0
+    if urgent_walls and (
+        state.walls_left(perspective) <= 2
+        or opponent_wall_threat(state, perspective)[0] >= 6
+    ):
+        root_actions = urgent_walls
 
     my_root_dist, _ = shortest_path(state, perspective)
 
@@ -868,7 +965,8 @@ def search_best(
 
     safe_race_actions = safe_pawn_race_progress_actions(state, perspective)
     if safe_race_actions:
-        root_actions = [action for action in root_actions if action in safe_race_actions]
+        filtered_safe_actions = [action for action in root_actions if action in safe_race_actions]
+        root_actions = filtered_safe_actions or safe_race_actions
 
     if opp_dist <= 1 and state.walls_left(perspective) > 0:
         blockers: list[tuple[float, str]] = []
@@ -888,9 +986,15 @@ def search_best(
         score += opening_tempo_adjustment(state, action, perspective)
         score += race_conversion_adjustment(state, action, perspective)
         score += pawn_race_adjustment(state, action, perspective)
+        score += future_wall_threat_adjustment(state, action, perspective)
         if action in avoid_actions and not improves_root_path(action) and not tactically_justified_reposition(action):
             return score - 900
         return score
+
+    if not root_actions:
+        root_actions = ordered_actions(state, limit_walls=16)[:ROOT_ACTION_LIMIT]
+    if not root_actions:
+        raise ValueError("No legal actions available for search")
 
     best_action = root_actions[0]
     best_score = root_adjusted_score(best_action, static_eval(apply_action(state, best_action), perspective))

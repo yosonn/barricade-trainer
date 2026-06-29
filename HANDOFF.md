@@ -611,6 +611,22 @@ Verification:
 
 - Run Python unit tests, Python compile checks, and frontend Node syntax checks
   before release.
+
+## 2026.06.30.08 Persist Last Computer Move Segment
+
+Changes:
+
+- AI battle page now keeps the last computer action code visible during the
+  following player turn instead of showing `-`.
+- The displayed score text marks it as the previous computer move, so it is not
+  mistaken for a newly computed player-turn recommendation.
+- Last-computer display is cleared on mode/first-player changes, replay, reset,
+  or manual history edits.
+- Bumped app/cache version to `2026.06.30.08`.
+
+Verification:
+
+- Run frontend Node syntax checks and Python regression tests before release.
 - Local HTTP smoke confirmed default `hybrid` plus explicit `mcts` and
   `alpha-beta` engine selection all work.
 - Hybrid vs MCTS, 8 games: 50% / 50%, errors 0.

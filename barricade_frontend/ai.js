@@ -45,6 +45,7 @@ let previewWall = "";
 let touchWallOrient = "";
 let lastWallTouchAt = 0;
 let lastComputerAction = null;
+let lastComputerMoveCode = "";
 let latestHistoryText = "";
 let autoBusy = false;
 let replayBusy = false;
@@ -269,6 +270,7 @@ async function tryCommit(actions, message = "", options = {}) {
     latest = quickPayload.state;
     latestHistoryText = normalizedHistoryText();
     lastComputerAction = options.computerAction || null;
+    if (options.computerAction) lastComputerMoveCode = options.computerAction.action;
     render(latest);
     if (message) statusText.textContent = message;
 
@@ -302,11 +304,18 @@ function render(state) {
   document.querySelector("#redInfo").textContent = `${t.walls} ${state.red.walls}`;
   document.querySelector("#blueInfo").textContent = `${t.walls} ${state.blue.walls}`;
   document.querySelector("#turnText").textContent = state.winner ? `${sideName(state.winner)}\u7372\u52dd` : `\u8f2a\u5230${sideName(state.turn)}`;
-  recommendationEl.textContent = state.recommendation || "-";
-  scoreText.textContent = state.recommendation ? `\u5206\u6578 ${Number(state.score).toFixed(1)}\uff5c\u6df1\u5ea6 ${state.searched_depth}\uff5c\u6a21\u578b ${state.resolved_engine || state.engine || "-"}` : "\u7b49\u5f85\u5206\u6790";
   winRateText.textContent = `\u7d05\u65b9 ${state.red_win_rate ?? "-"}%\uff5c\u85cd\u65b9 ${state.blue_win_rate ?? "-"}%`;
 
   const humanTurn = hasHumanPlayer() && state.turn === humanSide && !state.winner && replayIndex === null;
+  const displayAction = state.recommendation || (humanTurn && lastComputerMoveCode ? lastComputerMoveCode : "");
+  recommendationEl.textContent = displayAction || "-";
+  if (state.recommendation) {
+    scoreText.textContent = `分數 ${Number(state.score).toFixed(1)}｜深度 ${state.searched_depth}｜模型 ${state.resolved_engine || state.engine || "-"}`;
+  } else if (humanTurn && lastComputerMoveCode) {
+    scoreText.textContent = "電腦上一手，請照此移動後輸入你的走法";
+  } else {
+    scoreText.textContent = "等待分析";
+  }
   mainBtn.disabled = !humanTurn;
   aiStepBtn.disabled = Boolean(state.winner) || replayIndex !== null || humanTurn;
   autoBtn.disabled = Boolean(state.winner) || replayIndex !== null;
@@ -471,6 +480,7 @@ function setMode(nextMode) {
   stopReplay();
   replayIndex = null;
   lastComputerAction = null;
+  lastComputerMoveCode = "";
   mode = nextMode;
   modeHuman.classList.toggle("active", mode === "human");
   modeTopHuman.classList.toggle("active", mode === "topHuman");
@@ -486,6 +496,7 @@ function setMode(nextMode) {
 function setFirst(which) {
   stopAuto();
   lastComputerAction = null;
+  lastComputerMoveCode = "";
   firstMover = which;
   syncSidesForMode();
   updateFirstButtons();
@@ -574,6 +585,7 @@ async function renderReplay(index) {
   const requestId = ++analyzeRequestId;
   stopAuto();
   lastComputerAction = null;
+  lastComputerMoveCode = "";
   const tokens = historyTokens();
   replayIndex = clamp(index, 0, tokens.length);
   try {
@@ -634,6 +646,7 @@ resetBtn.addEventListener("click", () => {
   stopReplay();
   replayIndex = null;
   lastComputerAction = null;
+  lastComputerMoveCode = "";
   historyEl.value = "";
   actionInput.value = "";
   analyze();
@@ -762,6 +775,7 @@ historyEl.addEventListener("blur", analyze);
 historyEl.addEventListener("input", () => {
   stopAuto();
   lastComputerAction = null;
+  lastComputerMoveCode = "";
   latestHistoryText = "";
   statusText.textContent = "棋譜已修改，按「重新分析」後會從最新局面繼續。";
 });

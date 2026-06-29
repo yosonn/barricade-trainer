@@ -550,6 +550,27 @@ Verification:
   `barricade_mcts.py`, and `tools/barricade_backtest/backtest_loop.py`.
 - `node --check` passed for `barricade_frontend/app.js` and
   `barricade_frontend/ai.js`.
+
+## 2026.06.30.05 Blue-First Expert Mirror and Manual History Sync Segment
+
+Changes:
+
+- Fixed Expert mode for top-player/blue-first games by mirroring blue-first
+  local histories into Barricade.gg's red-first coordinate system before the API
+  request, then mirroring the returned move back before local validation.
+- Added regression tests for Expert blue-first opening and non-empty history.
+- Added manual-history sync guards in both frontend pages so edited textarea
+  histories must be re-analyzed before accepting/playing another recommendation.
+- Bumped app/cache version to `2026.06.30.05`.
+
+Verification:
+
+- 52 Python unit tests passed.
+- `py_compile` passed for backend, MCTS, Expert client, and external harness.
+- `node --check` passed for `barricade_frontend/app.js` and
+  `barricade_frontend/ai.js`.
+- Live Expert API blue-first smoke returned local `e8` instead of illegal
+  blue-side `e2`.
 - Local HTTP smoke confirmed default `hybrid` plus explicit `mcts` and
   `alpha-beta` engine selection all work.
 - Hybrid vs MCTS, 8 games: 50% / 50%, errors 0.

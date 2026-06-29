@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import barricade_mcts as mcts
 import barricade_trainer as b
+import barricade_expert as expert
 import barricade_web as web
 from tools.barricade_backtest import audit_losses
 
@@ -197,6 +198,46 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(payload["analysis"]["resolved_engine"], "expert")
         self.assertEqual(payload["recommendation"], "e2")
         client_cls.return_value.get_move.assert_called_once_with([])
+
+    def test_expert_coordinate_mirror_for_blue_first_mode(self):
+        self.assertEqual(expert.mirror_action("e2"), "e8")
+        self.assertEqual(expert.mirror_action("e8"), "e2")
+        self.assertEqual(expert.mirror_action("ha1"), "ha8")
+        self.assertEqual(expert.mirror_action("va3"), "va6")
+
+    @patch("barricade_web.BarricadeGgAiClient")
+    def test_external_expert_blue_first_opening_is_mirrored(self, client_cls):
+        client_cls.return_value.get_move.return_value = "e2"
+        state = b.State(turn="blue")
+        payload = web.state_payload(
+            state,
+            "blue",
+            0.05,
+            2,
+            engine_kind="expert",
+            recommend_for_turn=True,
+            start_turn="blue",
+            history_tokens=[],
+        )
+        self.assertEqual(payload["recommendation"], "e8")
+        client_cls.return_value.get_move.assert_called_once_with([])
+
+    @patch("barricade_web.BarricadeGgAiClient")
+    def test_external_expert_blue_first_history_is_mirrored_for_api(self, client_cls):
+        client_cls.return_value.get_move.return_value = "e8"
+        state = b.state_from_history("e8", start_turn="blue")
+        payload = web.state_payload(
+            state,
+            "red",
+            0.05,
+            2,
+            engine_kind="expert",
+            recommend_for_turn=True,
+            start_turn="blue",
+            history_tokens=["e8"],
+        )
+        self.assertEqual(payload["recommendation"], "e2")
+        client_cls.return_value.get_move.assert_called_once_with(["e2"])
 
     @patch("barricade_web.BarricadeGgAiClient")
     def test_external_expert_illegal_move_is_rejected(self, client_cls):

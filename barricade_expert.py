@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 import time
 import urllib.parse
 import urllib.request
@@ -9,6 +10,28 @@ import urllib.request
 API_BASE = "https://api.barricade.gg"
 SOCKET_URL = f"{API_BASE}/socket.io/"
 ORIGIN = "https://barricade.gg"
+
+
+def mirror_action(action: str) -> str:
+    """Mirror a move vertically between local blue-first and Barricade.gg red-first coordinates."""
+    action = action.strip().lower()
+    if re.fullmatch(r"[a-i][1-9]", action):
+        return f"{action[0]}{10 - int(action[1])}"
+    if re.fullmatch(r"[hv][a-h][1-8]", action):
+        return f"{action[0]}{action[1]}{9 - int(action[2])}"
+    return action
+
+
+def expert_history_for_start_turn(history: list[str], start_turn: str) -> list[str]:
+    if start_turn == "blue":
+        return [mirror_action(action) for action in history]
+    return history
+
+
+def local_action_from_expert(action: str, start_turn: str) -> str:
+    if start_turn == "blue":
+        return mirror_action(action)
+    return action
 
 
 class BarricadeGgAiClient:

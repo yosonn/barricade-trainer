@@ -30,6 +30,7 @@ let dragPreviewWall = "";
 let touchWallOrient = "";
 let lastWallTouchAt = 0;
 let analyzeRequestId = 0;
+let latestHistoryText = "";
 
 const text = {
   red: "紅方",
@@ -83,6 +84,10 @@ function coordToXY(coord) {
 
 function historyTokens() {
   return historyEl.value.trim().split(/\s+/).filter(Boolean);
+}
+
+function normalizedHistoryText() {
+  return historyTokens().join(" ");
 }
 
 function historyWithActions(actions) {
@@ -152,6 +157,7 @@ function analysisErrorMessage(error) {
 
 function applyAnalysis(payload) {
   latest = payload.state;
+  latestHistoryText = normalizedHistoryText();
   editingOwnMove = false;
   render(latest);
 }
@@ -396,6 +402,10 @@ function setSide(side) {
 }
 
 function recordNext() {
+  if (normalizedHistoryText() !== latestHistoryText) {
+    statusText.textContent = "棋譜已手動修改，請先按「重新分析」同步最新局面。";
+    return;
+  }
   if (!latest || latest.winner) return;
   const typed = actionInput.value.trim();
 
@@ -422,6 +432,10 @@ function recordNext() {
 }
 
 function acceptRecommendationOnly() {
+  if (normalizedHistoryText() !== latestHistoryText) {
+    statusText.textContent = "棋譜已手動修改，請先按「重新分析」同步最新局面。";
+    return;
+  }
   if (!latest?.user_to_move || !latest.recommendation || latest.winner) return;
   tryCommit([latest.recommendation]);
 }
@@ -565,5 +579,10 @@ boardEl.addEventListener("drop", (event) => {
 });
 
 historyEl.addEventListener("blur", analyze);
+historyEl.addEventListener("input", () => {
+  latestHistoryText = "";
+  editingOwnMove = false;
+  statusText.textContent = "棋譜已修改，按「重新分析」後會從最新局面繼續。";
+});
 engineSelect.addEventListener("change", () => analyze("已更新模型設定。"));
 analyze();

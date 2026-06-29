@@ -45,6 +45,7 @@ let previewWall = "";
 let touchWallOrient = "";
 let lastWallTouchAt = 0;
 let lastComputerAction = null;
+let latestHistoryText = "";
 let autoBusy = false;
 let replayBusy = false;
 let analyzeRequestId = 0;
@@ -102,6 +103,10 @@ function centerPercent(coord) {
 
 function historyTokens() {
   return historyEl.value.trim().split(/\s+/).filter(Boolean);
+}
+
+function normalizedHistoryText() {
+  return historyTokens().join(" ");
 }
 
 function historyWithActions(actions) {
@@ -221,6 +226,7 @@ async function analyze(message = "") {
       return;
     }
     latest = payload.state;
+    latestHistoryText = normalizedHistoryText();
     render(latest);
     if (message) statusText.textContent = message;
   } catch (error) {
@@ -253,6 +259,7 @@ async function tryCommit(actions, message = "", options = {}) {
     historyEl.value = candidateHistory;
     actionInput.value = "";
     latest = payload.state;
+    latestHistoryText = normalizedHistoryText();
     lastComputerAction = options.computerAction || null;
     render(latest);
     if (message) statusText.textContent = message;
@@ -469,6 +476,10 @@ function updateFirstButtons() {
 }
 
 async function aiStep() {
+  if (normalizedHistoryText() !== latestHistoryText) {
+    statusText.textContent = "棋譜已手動修改，請先按「重新分析」同步最新局面。";
+    return;
+  }
   if (!latest || latest.winner || !latest.recommendation) return;
   const side = latest.turn;
   const action = latest.recommendation;
@@ -726,5 +737,11 @@ boardEl.addEventListener("drop", (event) => {
   });
 });
 historyEl.addEventListener("blur", analyze);
+historyEl.addEventListener("input", () => {
+  stopAuto();
+  lastComputerAction = null;
+  latestHistoryText = "";
+  statusText.textContent = "棋譜已修改，按「重新分析」後會從最新局面繼續。";
+});
 updateFirstButtons();
 analyze();

@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.30.04
+## Current Status: 2026.06.30.05
 
 The production web/API backend now defaults to a hybrid engine. It routes to
 MCTS for general midgame planning, and switches to alpha-beta for tactical
@@ -15,6 +15,15 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.30.05` fixes Expert mode when the top player/blue side starts
+first. The Barricade.gg Expert API uses the standard red-first coordinate view,
+so blue-first histories are now mirrored before the API call and mirrored back
+before local validation. This fixes the previous `Illegal pawn move for blue:
+e2` opening error by converting the Expert opening to local `e8`. The trainer
+and AI battle pages also now warn when the full move-history textarea was
+edited manually and require `重新分析` before using a recommendation, preventing
+stale recommendations after correcting a real-game transcription mistake.
 
 Version `2026.06.30.04` integrates Barricade.gg Expert as a selectable live
 engine in the trainer and AI battle UI. Selecting `Barricade.gg Expert` sends

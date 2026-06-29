@@ -253,6 +253,22 @@ class BarricadeTrainerTests(unittest.TestCase):
                 history_tokens=[],
             )
 
+    @patch("barricade_web.BarricadeGgAiClient")
+    def test_state_payload_can_suppress_expert_recommendation(self, client_cls):
+        state = b.state_from_history("e2 e8 e3 e7")
+        payload = web.state_payload(
+            state,
+            "red",
+            0.05,
+            2,
+            engine_kind="expert",
+            recommend_for_turn=False,
+            history_tokens=["e2", "e8", "e3", "e7"],
+            suppress_recommend=True,
+        )
+        self.assertIsNone(payload["recommendation"])
+        client_cls.assert_not_called()
+
     def test_hybrid_resolves_to_alpha_beta_in_late_goal_threat(self):
         history = (
             "e2 e8 e3 e7 e4 e6 he2 hd4 f4 e5 f5 g5 hg4 he5 "

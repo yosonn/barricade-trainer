@@ -135,6 +135,12 @@ function activeSearchParams(history) {
   return searchParamsForSide(sideToMoveForHistory(history));
 }
 
+function shouldRecommendForHistory(history) {
+  if (mode === "auto") return true;
+  if (!hasHumanPlayer()) return true;
+  return sideToMoveForHistory(history) !== humanSide;
+}
+
 function isWallCode(action) {
   return /^[hv][a-h][1-8]$/i.test(action.trim());
 }
@@ -176,7 +182,8 @@ function syncSidesForMode() {
 }
 
 async function fetchAnalysis(history, options = {}) {
-  const shouldRecommend = options.recommendForTurn ?? true;
+  const shouldRecommend = options.recommendForTurn ?? shouldRecommendForHistory(history);
+  const suppressRecommend = options.suppressRecommend ?? !shouldRecommend;
   const params = shouldRecommend ? activeSearchParams(history) : { time: 0.05, depth: 1, engine: engineSelect.value };
   const controller = new AbortController();
   const timeoutMs = params.engine === "expert"
@@ -193,6 +200,7 @@ async function fetchAnalysis(history, options = {}) {
         user_side: humanSide,
         start_turn: currentStartTurn(),
         recommend_for_turn: shouldRecommend,
+        suppress_recommend: suppressRecommend,
         time: params.time,
         depth: params.depth,
         engine: params.engine,
@@ -247,22 +255,36 @@ async function tryCommit(actions, message = "", options = {}) {
   const candidateHistory = historyWithActions(actions);
   const nextThinkSide = sideToMoveForHistory(candidateHistory);
   const requestId = ++analyzeRequestId;
-  statusText.textContent = `${sideName(nextThinkSide)}\u601d\u8003\u4e2d...`;
+  statusText.textContent = "正在更新棋盤...";
   try {
-    const payload = await fetchAnalysis(candidateHistory);
+    const quickPayload = await fetchAnalysis(candidateHistory, { recommendForTurn: false });
     if (requestId !== analyzeRequestId) return false;
-    if (!payload.ok) {
-      statusText.textContent = `${t.invalid}${payload.error}`;
+    if (!quickPayload.ok) {
+      statusText.textContent = `${t.invalid}${quickPayload.error}`;
       actionInput.focus();
       return false;
     }
     historyEl.value = candidateHistory;
     actionInput.value = "";
-    latest = payload.state;
+    latest = quickPayload.state;
     latestHistoryText = normalizedHistoryText();
     lastComputerAction = options.computerAction || null;
     render(latest);
     if (message) statusText.textContent = message;
+
+    if (!latest.winner && shouldRecommendForHistory(candidateHistory)) {
+      statusText.textContent = `${sideName(nextThinkSide)}思考中...`;
+      const recommendationPayload = await fetchAnalysis(candidateHistory, { recommendForTurn: true });
+      if (requestId !== analyzeRequestId) return false;
+      if (!recommendationPayload.ok) {
+        statusText.textContent = `${t.invalid}${recommendationPayload.error}`;
+        return false;
+      }
+      latest = recommendationPayload.state;
+      latestHistoryText = normalizedHistoryText();
+      render(latest);
+      if (message) statusText.textContent = message;
+    }
     return true;
   } catch (error) {
     if (requestId !== analyzeRequestId) return false;

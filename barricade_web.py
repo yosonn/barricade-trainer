@@ -14,7 +14,7 @@ from barricade_expert import BarricadeGgAiClient, expert_history_for_start_turn,
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
-APP_VERSION = "2026.06.30.05"
+APP_VERSION = "2026.06.30.07"
 DEFAULT_ENGINE = "hybrid"
 EXPERT_ENGINE = "expert"
 SUPPORTED_ENGINES = {"alpha-beta", "mcts", "hybrid", EXPERT_ENGINE}
@@ -234,6 +234,7 @@ def state_payload(
     avoid_actions: set[str] | None = None,
     mcts_seed: int = 0,
     history_tokens: list[str] | None = None,
+    suppress_recommend: bool = False,
 ) -> dict:
     red_dist, red_path = engine.movement_path(state, "red")
     blue_dist, blue_path = engine.movement_path(state, "blue")
@@ -246,7 +247,7 @@ def state_payload(
     searched_depth = None
     resolved_engine = engine_kind
     recommend_side = state.turn if recommend_for_turn else user_side
-    if state.turn == recommend_side and actions:
+    if not suppress_recommend and state.turn == recommend_side and actions:
         recommendation, score, searched_depth, resolved_engine = recommend_action(
             state,
             search_time,
@@ -396,6 +397,7 @@ class Handler(SimpleHTTPRequestHandler):
             if engine_kind not in SUPPORTED_ENGINES:
                 raise ValueError("engine must be alpha-beta, mcts, hybrid, or expert")
             recommend_for_turn = bool(payload.get("recommend_for_turn", False))
+            suppress_recommend = bool(payload.get("suppress_recommend", False))
             history_tokens = engine.tokenize_history(history)
             state = engine.state_from_history(history, start_turn=start_turn)
             avoid_actions = root_avoid_actions(history, start_turn)
@@ -413,6 +415,7 @@ class Handler(SimpleHTTPRequestHandler):
                     avoid_actions,
                     mcts_seed,
                     history_tokens,
+                    suppress_recommend,
                 ),
             })
         except Exception as exc:

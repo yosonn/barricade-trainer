@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.30.06
+## Current Status: 2026.06.30.07
 
 The production web/API backend now defaults to a hybrid engine. It routes to
 MCTS for general midgame planning, and switches to alpha-beta for tactical
@@ -15,6 +15,13 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.30.07` improves Expert-mode UI responsiveness in the AI battle
+page. Player moves are now validated and rendered immediately with a fast local
+no-recommendation analysis, then the slower Expert API recommendation is fetched
+only if the next side to move is the computer. Human turns no longer request or
+display an Expert recommendation, preventing confusing states where the page
+shows an AI move while it is actually the player's turn.
 
 Version `2026.06.30.06` adds the first safe Barricade.gg live-practice
 synchronizer. `tools/barricade_external/live_sync_assistant.py` can read a

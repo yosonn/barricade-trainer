@@ -594,6 +594,23 @@ Verification:
 - Added live-sync extraction tests for `moves` payloads and noisy page text.
 - Run Python unit tests, Python compile checks, Node syntax checks, and a CLI
   smoke before release.
+
+## 2026.06.30.07 Expert UI Fast Render Segment
+
+Changes:
+
+- Split AI battle commits into a fast local no-recommendation render followed
+  by a slower Expert recommendation only when the next turn belongs to the
+  computer.
+- Human turns no longer request/display Expert recommendations, fixing the
+  confusing state where the page suggested an AI move while the player was to
+  move.
+- Bumped app/cache version to `2026.06.30.07`.
+
+Verification:
+
+- Run Python unit tests, Python compile checks, and frontend Node syntax checks
+  before release.
 - Local HTTP smoke confirmed default `hybrid` plus explicit `mcts` and
   `alpha-beta` engine selection all work.
 - Hybrid vs MCTS, 8 games: 50% / 50%, errors 0.

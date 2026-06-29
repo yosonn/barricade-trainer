@@ -119,7 +119,9 @@ function wallLimitMessage(actions) {
 
 async function fetchAnalysis(history) {
   const controller = new AbortController();
-  const timeoutMs = Math.max(8000, Number(timeLimit.value || 0) * 1000 + 5000);
+  const timeoutMs = engineSelect.value === "expert"
+    ? 40000
+    : Math.max(8000, Number(timeLimit.value || 0) * 1000 + 5000);
   const timeoutId = window.setTimeout(() => controller.abort("timeout"), timeoutMs);
   let response;
   try {

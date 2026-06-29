@@ -1,12 +1,13 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.30.03
+## Current Status: 2026.06.30.04
 
 The production web/API backend now defaults to a hybrid engine. It routes to
 MCTS for general midgame planning, and switches to alpha-beta for tactical
 endgames, immediate goal threats, low-wall races, and close-contact wall-trap
 openings. The API and frontend now support explicit model selection through
-`engine: "hybrid"`, `engine: "mcts"`, or `engine: "alpha-beta"`.
+`engine: "hybrid"`, `engine: "mcts"`, `engine: "alpha-beta"`, or
+`engine: "expert"`.
 
 New backtest options:
 
@@ -14,6 +15,18 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.30.04` integrates Barricade.gg Expert as a selectable live
+engine in the trainer and AI battle UI. Selecting `Barricade.gg Expert` sends
+the current full move history to the public Barricade.gg AI Socket.IO endpoint
+and uses the returned move after validating it against the local rules. This
+works in player-vs-computer and computer-vs-computer modes, so either side can
+be driven by Hybrid, MCTS, Alpha-Beta, or the external Expert. Because Expert
+depends on the remote service, the frontend gives Expert requests a longer
+40-second timeout and the backend rejects illegal API-returned moves instead of
+applying them. Verification: 49 Python unit tests passed; Python `py_compile`
+passed for backend, MCTS, Expert client, and external harness; frontend
+`node --check` passed for both JS files.
 
 Version `2026.06.30.03` adds an external Barricade.gg Expert test harness and
 improves the backend against next-turn wall traps. The new tool calls the same

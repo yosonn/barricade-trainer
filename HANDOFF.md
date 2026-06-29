@@ -635,3 +635,29 @@ Verification:
 - Added unit tests covering repeat-state detection and loop avoidance for the reported game family.
 - Confirmed the supplied history reconstructs correctly and no longer recommends the obvious cycle-closing `e3` move for red in the repeated state.
 - Frontend JS syntax checks pass after the timeout handling changes.
+
+## 2026.06.30.04 External Expert Selectable Engine Segment
+
+Current backend default remains `hybrid`, but the web/API now also accepts
+`engine: "expert"`. This routes the requested computer move to Barricade.gg's
+remote Expert service through the shared `barricade_expert.py` Socket.IO polling
+client, then validates the returned move with local rules before applying it.
+
+Changes:
+
+- Added `barricade_expert.py` as the reusable Barricade.gg Expert API client.
+- Updated `/api/analyze` engine validation and recommendation dispatch to
+  support `hybrid`, `mcts`, `alpha-beta`, and `expert`.
+- Added `Barricade.gg Expert` to trainer and AI battle model selectors,
+  including red/blue per-side selectors for computer-vs-computer mode.
+- Extended frontend Expert request timeout to 40 seconds.
+- Refactored `tools/barricade_external/play_barricade_gg.py` to share the same
+  Expert client instead of carrying a duplicate implementation.
+- Bumped app/cache version to `2026.06.30.04`.
+
+Verification:
+
+- 49 Python unit tests passed.
+- `py_compile` passed for backend, MCTS, Expert client, and external harness.
+- `node --check` passed for `barricade_frontend/app.js` and
+  `barricade_frontend/ai.js`.

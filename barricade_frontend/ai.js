@@ -174,7 +174,9 @@ async function fetchAnalysis(history, options = {}) {
   const shouldRecommend = options.recommendForTurn ?? true;
   const params = shouldRecommend ? activeSearchParams(history) : { time: 0.05, depth: 1, engine: engineSelect.value };
   const controller = new AbortController();
-  const timeoutMs = Math.max(8000, Number(params.time || 0) * 1000 + 5000);
+  const timeoutMs = params.engine === "expert"
+    ? 40000
+    : Math.max(8000, Number(params.time || 0) * 1000 + 5000);
   const timeoutId = window.setTimeout(() => controller.abort("timeout"), timeoutMs);
   let response;
   try {

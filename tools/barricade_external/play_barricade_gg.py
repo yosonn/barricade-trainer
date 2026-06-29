@@ -10,12 +10,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import random
 import statistics
 import sys
-import time
-import urllib.parse
-import urllib.request
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -27,11 +23,7 @@ if str(ROOT) not in sys.path:
 
 import barricade_trainer as engine
 import barricade_web as web
-
-
-API_BASE = "https://api.barricade.gg"
-SOCKET_URL = f"{API_BASE}/socket.io/"
-ORIGIN = "https://barricade.gg"
+from barricade_expert import BarricadeGgAiClient
 
 
 @dataclass(frozen=True)
@@ -63,80 +55,6 @@ class ExternalGameResult:
     history: list[str]
     turns: list[TurnRecord]
     errors: list[str]
-
-
-class BarricadeGgAiClient:
-    def __init__(self, difficulty: str = "expert", timeout: float = 35.0, pause_sec: float = 1.0) -> None:
-        self.difficulty = difficulty
-        self.timeout = timeout
-        self.pause_sec = pause_sec
-        self.device_id = f"codex-{int(time.time())}-{random.randint(1000, 9999)}"
-
-    def get_move(self, history: list[str]) -> str:
-        if self.pause_sec:
-            time.sleep(self.pause_sec)
-
-        sid = self._open_session()
-        poll_url = (
-            f"{SOCKET_URL}?EIO=4&transport=polling&sid={urllib.parse.quote(sid)}"
-            f"&t={int(time.time() * 1000)}"
-        )
-        self._request(poll_url, method="POST", data=f'40/ai,{{"deviceId":"{self.device_id}"}}')
-        self._request(poll_url)
-
-        correlation_id = f"codex-{int(time.time() * 1000)}"
-        payload = [
-            "ai:get_move",
-            {
-                "moves": ",".join(history),
-                "difficulty": self.difficulty,
-                "correlationId": correlation_id,
-                "deviceId": self.device_id,
-            },
-        ]
-        self._request(poll_url, method="POST", data="42/ai,0" + json.dumps(payload, separators=(",", ":")))
-        for _ in range(4):
-            response = self._request(poll_url)
-            if response == "2":
-                self._request(poll_url, method="POST", data="3")
-                continue
-            return self._parse_ai_response(response)
-        raise RuntimeError("AI service did not return a move after ping/pong polling")
-
-    def _open_session(self) -> str:
-        url = f"{SOCKET_URL}?EIO=4&transport=polling&t={int(time.time() * 1000)}"
-        body = self._request(url)
-        if not body.startswith("0"):
-            raise RuntimeError(f"Unexpected Socket.IO handshake: {body[:120]}")
-        return str(json.loads(body[1:])["sid"])
-
-    def _request(self, url: str, method: str = "GET", data: str | None = None) -> str:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/149 Safari/537.36",
-            "Accept": "*/*",
-            "Origin": ORIGIN,
-            "Referer": ORIGIN + "/computer",
-        }
-        encoded = None
-        if data is not None:
-            encoded = data.encode("utf-8")
-            headers["Content-Type"] = "text/plain;charset=UTF-8"
-        request = urllib.request.Request(url, data=encoded, headers=headers, method=method)
-        with urllib.request.urlopen(request, timeout=self.timeout) as response:
-            return response.read().decode("utf-8", "replace")
-
-    @staticmethod
-    def _parse_ai_response(packet: str) -> str:
-        if not packet.startswith("43/ai,0"):
-            raise RuntimeError(f"Unexpected AI response packet: {packet[:160]}")
-        payload = json.loads(packet[len("43/ai,0"):])
-        data = payload[0] if payload else {}
-        if not data.get("ok"):
-            raise RuntimeError(f"AI service returned an error: {data}")
-        move = str(data.get("move", "")).strip().lower()
-        if not move:
-            raise RuntimeError(f"AI service returned no move: {data}")
-        return move
 
 
 def opposite(side: str) -> str:

@@ -9,12 +9,16 @@ from urllib.parse import unquote
 
 import barricade_trainer as engine
 import barricade_mcts
+from barricade_expert import BarricadeGgAiClient
 
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
-APP_VERSION = "2026.06.30.03"
+APP_VERSION = "2026.06.30.04"
 DEFAULT_ENGINE = "hybrid"
+EXPERT_ENGINE = "expert"
+SUPPORTED_ENGINES = {"alpha-beta", "mcts", "hybrid", EXPERT_ENGINE}
+EXPERT_TIMEOUT_SECONDS = 35.0
 DEFAULT_MCTS_SIMULATIONS = 120
 DEFAULT_MCTS_MAX_ACTIONS = 20
 DEFAULT_MCTS_ROLLOUT_DEPTH = 2
@@ -182,8 +186,16 @@ def recommend_action(
     engine_kind: str,
     avoid_actions: set[str] | None,
     seed: int = 0,
+    history_tokens: list[str] | None = None,
 ) -> tuple[str, float, int, str]:
     resolved_engine = resolve_hybrid_engine(state) if engine_kind == "hybrid" else engine_kind
+    if resolved_engine == EXPERT_ENGINE:
+        action = BarricadeGgAiClient(timeout=EXPERT_TIMEOUT_SECONDS).get_move(history_tokens or [])
+        try:
+            engine.apply_action(state, action)
+        except Exception as exc:
+            raise ValueError(f"Barricade.gg Expert returned illegal move {action}: {exc}") from exc
+        return action, engine.action_score(state, action, state.turn), 0, resolved_engine
     if resolved_engine == "mcts":
         action, score, searched_depth = barricade_mcts.search_mcts(
             state,
@@ -215,6 +227,7 @@ def state_payload(
     start_turn: str = "red",
     avoid_actions: set[str] | None = None,
     mcts_seed: int = 0,
+    history_tokens: list[str] | None = None,
 ) -> dict:
     red_dist, red_path = engine.movement_path(state, "red")
     blue_dist, blue_path = engine.movement_path(state, "blue")
@@ -235,6 +248,7 @@ def state_payload(
             engine_kind,
             avoid_actions,
             seed=mcts_seed,
+            history_tokens=history_tokens,
         )
 
     return {
@@ -372,12 +386,13 @@ class Handler(SimpleHTTPRequestHandler):
             search_time = max(0.05, min(float(payload.get("time", 0.5)), 3.0))
             depth = max(1, min(int(payload.get("depth", 3)), 5))
             engine_kind = str(payload.get("engine", DEFAULT_ENGINE))
-            if engine_kind not in {"alpha-beta", "mcts", "hybrid"}:
-                raise ValueError("engine must be alpha-beta, mcts, or hybrid")
+            if engine_kind not in SUPPORTED_ENGINES:
+                raise ValueError("engine must be alpha-beta, mcts, hybrid, or expert")
             recommend_for_turn = bool(payload.get("recommend_for_turn", False))
+            history_tokens = engine.tokenize_history(history)
             state = engine.state_from_history(history, start_turn=start_turn)
             avoid_actions = root_avoid_actions(history, start_turn)
-            mcts_seed = len(engine.tokenize_history(history))
+            mcts_seed = len(history_tokens)
             self.write_json({
                 "ok": True,
                 "state": state_payload(
@@ -390,6 +405,7 @@ class Handler(SimpleHTTPRequestHandler):
                     start_turn,
                     avoid_actions,
                     mcts_seed,
+                    history_tokens,
                 ),
             })
         except Exception as exc:

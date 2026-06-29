@@ -1,5 +1,6 @@
 import unittest
 from dataclasses import replace
+from unittest.mock import patch
 
 import barricade_mcts as mcts
 import barricade_trainer as b
@@ -178,6 +179,37 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(payload["analysis"]["engine"], "alpha-beta")
         self.assertEqual(payload["analysis"]["resolved_engine"], "alpha-beta")
         self.assertIn(payload["recommendation"], payload["legal_actions"])
+
+    @patch("barricade_web.BarricadeGgAiClient")
+    def test_state_payload_can_use_external_expert_engine(self, client_cls):
+        client_cls.return_value.get_move.return_value = "e2"
+        state = b.State()
+        payload = web.state_payload(
+            state,
+            "red",
+            0.05,
+            2,
+            engine_kind="expert",
+            recommend_for_turn=True,
+            history_tokens=[],
+        )
+        self.assertEqual(payload["analysis"]["engine"], "expert")
+        self.assertEqual(payload["analysis"]["resolved_engine"], "expert")
+        self.assertEqual(payload["recommendation"], "e2")
+        client_cls.return_value.get_move.assert_called_once_with([])
+
+    @patch("barricade_web.BarricadeGgAiClient")
+    def test_external_expert_illegal_move_is_rejected(self, client_cls):
+        client_cls.return_value.get_move.return_value = "a1"
+        with self.assertRaisesRegex(ValueError, "illegal move"):
+            web.recommend_action(
+                b.State(),
+                search_time=0.05,
+                depth=2,
+                engine_kind="expert",
+                avoid_actions=set(),
+                history_tokens=[],
+            )
 
     def test_hybrid_resolves_to_alpha_beta_in_late_goal_threat(self):
         history = (

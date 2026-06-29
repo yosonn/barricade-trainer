@@ -45,6 +45,17 @@ node tools\barricade_external\barricade_gg_live_bridge.js `
   --copy
 ```
 
+Simplest local launch after dependencies are installed:
+
+```powershell
+cd C:\Yoson\BarricadeTrainer
+.\start_live_sync.cmd
+```
+
+This opens a browser window. Log in or open a Barricade.gg computer/practice
+game there, then watch this terminal for `recommend=...`. With `--copy` enabled
+by the launcher, the latest recommendation is copied to your clipboard.
+
 Version `2026.06.30.05` fixes Expert mode when the top player/blue side starts
 first. The Barricade.gg Expert API uses the standard red-first coordinate view,
 so blue-first histories are now mirrored before the API call and mirrored back

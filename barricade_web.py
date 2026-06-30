@@ -14,7 +14,7 @@ from barricade_expert import BarricadeGgAiClient, expert_history_for_start_turn,
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
-APP_VERSION = "2026.06.30.09"
+APP_VERSION = "2026.06.30.10"
 DEFAULT_ENGINE = "hybrid"
 EXPERT_ENGINE = "expert"
 SUPPORTED_ENGINES = {"alpha-beta", "mcts", "hybrid", EXPERT_ENGINE}
@@ -157,26 +157,10 @@ def analysis_payload(
 
 
 def resolve_hybrid_engine(state: engine.State) -> str:
-    perspective = state.turn
-    opp = engine.opponent(perspective)
-    my_dist, _ = engine.movement_path(state, perspective)
-    opp_dist, _ = engine.movement_path(state, opp)
-    total_walls = state.walls_left("red") + state.walls_left("blue")
-    pawn_gap = abs(state.red[0] - state.blue[0]) + abs(state.red[1] - state.blue[1])
-
-    # Use alpha-beta for tactical races, immediate threats, and narrow endgames.
-    if engine.player_has_goal_move(state, perspective) or engine.player_has_goal_move(state, opp):
-        return "alpha-beta"
-    if pawn_gap <= 2 and total_walls >= 8 and min(my_dist, opp_dist) <= 6:
-        return "alpha-beta"
-    if min(my_dist, opp_dist) <= 3:
-        return "alpha-beta"
-    if total_walls <= 3:
-        return "alpha-beta"
-    if state.walls_left(perspective) <= 1 or state.walls_left(opp) <= 1:
-        if abs(my_dist - opp_dist) <= 4:
-            return "alpha-beta"
-    return "mcts"
+    # Expert matchup audits show the current MCTS policy is still too noisy for
+    # production play. Keep MCTS selectable, but make Hybrid the stable
+    # alpha-beta policy until MCTS has a learned/value-guided evaluator.
+    return "alpha-beta"
 
 
 def recommend_action(

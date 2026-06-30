@@ -685,7 +685,16 @@ def opening_book_action(state: State) -> str | None:
         and state.blue_walls >= 9
         and len(state.walls) <= 2
     ):
-        return "hd4"
+        return "e5"
+    if (
+        state.turn == "blue"
+        and state.red == text_to_coord("e3")
+        and state.blue == text_to_coord("e8")
+        and state.red_walls == 10
+        and state.blue_walls == 10
+        and not state.walls
+    ):
+        return "e7"
     if (
         state.turn == "blue"
         and state.red == text_to_coord("e4")
@@ -694,7 +703,7 @@ def opening_book_action(state: State) -> str | None:
         and state.blue_walls == 10
         and not state.walls
     ):
-        return "hd4"
+        return "e6"
     return None
 
 

@@ -72,15 +72,15 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(b.shortest_path(state, "blue")[0], 5)
         self.assertEqual(b.movement_path(state, "blue")[0], 4)
 
-    def test_opening_avoids_feeding_opponent_jump(self):
+    def test_opening_uses_expert_style_tempo_development(self):
         state = b.state_from_history("e2 e8 e3 e7 e4 e6")
         best, _, _ = b.search_best(state, time_limit=0.2, max_depth=3)
-        self.assertNotEqual(best, "e5")
+        self.assertEqual(best, "e5")
 
-    def test_blue_opening_book_chooses_deeper_search_branch(self):
+    def test_blue_opening_book_develops_before_back_rank_walls(self):
         state = b.state_from_history("e2 e8 e3 e7 e4")
         best, _, depth = b.search_best(state, time_limit=0.05, max_depth=3)
-        self.assertEqual(best, "hd4")
+        self.assertEqual(best, "e6")
         self.assertEqual(depth, 0)
 
     def test_path_flexibility_counts_useful_moves(self):
@@ -287,14 +287,14 @@ class BarricadeTrainerTests(unittest.TestCase):
         state = b.state_from_history("e2 e8 e3 e7 e4 e6")
         payload = web.state_payload(state, "red", 0.05, 3, recommend_for_turn=True)
         self.assertEqual(payload["analysis"]["resolved_engine"], "alpha-beta")
-        self.assertEqual(payload["recommendation"], "hd4")
+        self.assertEqual(payload["recommendation"], "e5")
 
     def test_reported_strong_computer_game_avoids_mcts_opening_trap(self):
         history = "e2 e8 e3 e7 e4 e6 he2 hf6"
         state = b.state_from_history(history)
         payload = web.state_payload(state, "red", 0.05, 3, recommend_for_turn=True)
         self.assertEqual(payload["analysis"]["resolved_engine"], "alpha-beta")
-        self.assertEqual(payload["recommendation"], "hd4")
+        self.assertEqual(payload["recommendation"], "e5")
 
     def test_barricade_gg_expert_red_avoids_next_wall_trap(self):
         history = "e2 e8 e3 e7 e4 e6 hd4 hf6 hf3 ha7 f4 hh6"

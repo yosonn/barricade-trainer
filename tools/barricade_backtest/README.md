@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.30.03`
+Current project version: `2026.06.30.10`
 
 The tool supports two execution modes:
 
@@ -27,6 +27,12 @@ python tools\barricade_external\play_barricade_gg.py `
   --local-engine hybrid `
   --out-dir backtest_runs\barricade-gg-expert-red
 ```
+
+Version `2026.06.30.10` changes Hybrid to resolve to the stable alpha-beta
+policy by default after a 10-game Expert loss audit. MCTS remains available as
+an explicit experimental model, and the opening book now avoids the repeated
+red `hd4` self-delay and blue early back-rank walling patterns from that loss
+set.
 
 Run the same tournament entirely inside the local repo:
 

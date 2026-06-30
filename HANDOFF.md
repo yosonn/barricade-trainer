@@ -646,6 +646,30 @@ Verification:
 - Hybrid vs MCTS, 8 games: 50% / 50%, errors 0.
 - Hybrid vs alpha-beta depth 3, 8 games: hybrid 62.5%, alpha-beta 37.5%,
   errors 0.
+
+## 2026.06.30.10 Expert Opening Tempo Segment
+
+Changes:
+
+- Audited a user-supplied 10-game Hybrid-vs-Expert loss set. Hybrid lost all
+  completed games, with repeated opening tempo failures and too much reliance
+  on the current noisy MCTS policy.
+- Changed `hybrid` routing so it resolves to the stable alpha-beta policy by
+  default. MCTS remains available only when explicitly selected.
+- Updated the opening book to avoid repeated Expert-exploited mistakes: red now
+  develops with `e5` instead of the self-delaying `hd4` in the `e4/e6`
+  opening, and blue develops `e7/e6` before early back-rank walls.
+- Bumped app/cache version to `2026.06.30.10`.
+
+Verification:
+
+- Reconstructed all 10 supplied histories locally and confirmed the main loss
+  patterns: early self-delay, back-rank wall overuse, bad/low-impact walls, and
+  terminal races with no walls left.
+- Confirmed updated opening recommendations for the audited red/blue opening
+  states.
+- Python unit tests, compile checks, frontend JS syntax checks, and local HTTP
+  `/api/analyze` smoke passed.
 ## 2026.06.30.03 Barricade.gg Expert Harness and Next-Wall Threat Segment
 
 ### Why

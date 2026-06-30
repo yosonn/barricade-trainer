@@ -1,11 +1,13 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.30.09
+## Current Status: 2026.06.30.10
 
-The production web/API backend now defaults to a hybrid engine. It routes to
-MCTS for general midgame planning, and switches to alpha-beta for tactical
-endgames, immediate goal threats, low-wall races, and close-contact wall-trap
-openings. The API and frontend now support explicit model selection through
+The production web/API backend still exposes a hybrid engine, but Hybrid now
+resolves to the stable alpha-beta policy by default. A 10-game Hybrid-vs-Expert
+audit showed that the current MCTS policy is too noisy against Barricade.gg
+Expert, especially in opening tempo and wall-spending decisions. MCTS remains
+available as an explicit experimental model. The API and frontend support
+explicit model selection through
 `engine: "hybrid"`, `engine: "mcts"`, `engine: "alpha-beta"`, or
 `engine: "expert"`.
 
@@ -15,6 +17,12 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.30.10` retunes the backend after a 10-game Expert loss set.
+Hybrid now uses alpha-beta instead of MCTS routing, and the opening book avoids
+two repeated Expert-exploited mistakes: red no longer self-delays with `hd4`
+from the `e4/e6` opening, and blue prioritizes `e7/e6` development before
+early back-rank walls.
 
 Version `2026.06.30.09` adds `tools/barricade_external/expert_policy_audit.py`.
 It compares supplied histories against live Barricade.gg Expert decisions and

@@ -699,6 +699,29 @@ Verification:
 - Python unit tests, compile checks, frontend JS syntax checks, analysis CLI
   smoke, and local HTTP `/api/analyze` Expert cache smoke passed.
 
+## 2026.07.01.01 Expert Persistent Session Speed Segment
+
+Changes:
+- Added persistent Socket.IO polling-session reuse to `BarricadeGgAiClient`.
+  Consecutive `get_move()` calls now reuse the same sid/poll URL instead of
+  handshaking for every Expert recommendation.
+- Added automatic one-time reconnect if the remote polling session expires.
+- Added a backend Expert client pool in `barricade_web.py`, keyed by
+  difficulty/timeout, so web/API Expert mode reuses a process-level client.
+- Added `reset_expert_clients()` for deterministic tests and future tooling.
+- Bumped app/cache version to `2026.07.01.01`.
+
+Why:
+- The two-phone Expert-copy workflow felt faster because the official client
+  keeps game/session state hot, while the local Python client was reopening a
+  remote Socket.IO session for every move.
+
+Verification:
+- Added tests that the low-level Expert client opens the socket session only
+  once across two move requests.
+- Added tests that the web backend reuses the same Expert client across two
+  non-cache recommendations.
+
 ## 2026.06.30.13 Expert Prefix Cache and Scaffold Wall-Prior Segment
 
 Changes:

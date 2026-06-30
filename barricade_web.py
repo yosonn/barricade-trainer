@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import argparse
 import os
+import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote
@@ -15,7 +16,7 @@ from barricade_expert import BarricadeGgAiClient, expert_history_for_start_turn,
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
-APP_VERSION = "2026.06.30.13"
+APP_VERSION = "2026.07.01.01"
 DEFAULT_ENGINE = "hybrid"
 EXPERT_ENGINE = "expert"
 SUPPORTED_ENGINES = {"alpha-beta", "mcts", "hybrid", EXPERT_ENGINE}
@@ -24,6 +25,27 @@ DEFAULT_MCTS_SIMULATIONS = 120
 DEFAULT_MCTS_MAX_ACTIONS = 20
 DEFAULT_MCTS_ROLLOUT_DEPTH = 2
 DEFAULT_MCTS_EXPLORATION = 1.35
+EXPERT_CLIENTS: dict[tuple[str, float], BarricadeGgAiClient] = {}
+EXPERT_CLIENTS_LOCK = threading.Lock()
+
+
+def get_expert_client(difficulty: str = "expert", timeout: float = EXPERT_TIMEOUT_SECONDS) -> BarricadeGgAiClient:
+    key = (difficulty, timeout)
+    with EXPERT_CLIENTS_LOCK:
+        client = EXPERT_CLIENTS.get(key)
+        if client is None:
+            client = BarricadeGgAiClient(difficulty=difficulty, timeout=timeout)
+            EXPERT_CLIENTS[key] = client
+        return client
+
+
+def reset_expert_clients() -> None:
+    with EXPERT_CLIENTS_LOCK:
+        for client in EXPERT_CLIENTS.values():
+            close = getattr(client, "close", None)
+            if callable(close):
+                close()
+        EXPERT_CLIENTS.clear()
 
 
 def win_rate_from_score(score: float) -> float:
@@ -178,7 +200,7 @@ def recommend_action(
     if resolved_engine == EXPERT_ENGINE:
         expert_history = expert_history_for_start_turn(history_tokens or [], start_turn)
         cache_hit = lookup_expert_cache(expert_history)
-        expert_action = cache_hit.action if cache_hit else BarricadeGgAiClient(timeout=EXPERT_TIMEOUT_SECONDS).get_move(expert_history)
+        expert_action = cache_hit.action if cache_hit else get_expert_client(timeout=EXPERT_TIMEOUT_SECONDS).get_move(expert_history)
         action = local_action_from_expert(expert_action, start_turn)
         try:
             engine.apply_action(state, action)

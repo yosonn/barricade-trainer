@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import random
 import re
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -42,18 +43,28 @@ class BarricadeGgAiClient:
         self.timeout = timeout
         self.pause_sec = pause_sec
         self.device_id = f"codex-{int(time.time())}-{random.randint(1000, 9999)}"
+        self.sid: str | None = None
+        self.poll_url: str | None = None
+        self._lock = threading.Lock()
 
     def get_move(self, history: list[str]) -> str:
+        with self._lock:
+            return self._get_move_locked(history)
+
+    def _get_move_locked(self, history: list[str]) -> str:
         if self.pause_sec:
             time.sleep(self.pause_sec)
 
-        sid = self._open_session()
-        poll_url = (
-            f"{SOCKET_URL}?EIO=4&transport=polling&sid={urllib.parse.quote(sid)}"
-            f"&t={int(time.time() * 1000)}"
-        )
-        self._request(poll_url, method="POST", data=f'40/ai,{{"deviceId":"{self.device_id}"}}')
-        self._request(poll_url)
+        try:
+            return self._get_move_with_session(history)
+        except Exception:
+            # Socket.IO polling sessions can expire between turns. Re-open once
+            # so the UI recovers without forcing the user to restart the app.
+            self.close()
+            return self._get_move_with_session(history)
+
+    def _get_move_with_session(self, history: list[str]) -> str:
+        poll_url = self._ensure_session()
 
         correlation_id = f"codex-{int(time.time() * 1000)}"
         payload = [
@@ -73,6 +84,23 @@ class BarricadeGgAiClient:
                 continue
             return self._parse_ai_response(response)
         raise RuntimeError("Barricade.gg Expert did not return a move after ping/pong polling")
+
+    def close(self) -> None:
+        self.sid = None
+        self.poll_url = None
+
+    def _ensure_session(self) -> str:
+        if self.poll_url:
+            return self.poll_url
+        sid = self._open_session()
+        self.sid = sid
+        self.poll_url = (
+            f"{SOCKET_URL}?EIO=4&transport=polling&sid={urllib.parse.quote(sid)}"
+            f"&t={int(time.time() * 1000)}"
+        )
+        self._request(self.poll_url, method="POST", data=f'40/ai,{{"deviceId":"{self.device_id}"}}')
+        self._request(self.poll_url)
+        return self.poll_url
 
     def _open_session(self) -> str:
         url = f"{SOCKET_URL}?EIO=4&transport=polling&t={int(time.time() * 1000)}"

@@ -13,6 +13,9 @@ from tools.barricade_external import live_sync_core
 
 
 class BarricadeTrainerTests(unittest.TestCase):
+    def setUp(self):
+        web.reset_expert_clients()
+
     def test_opening_history(self):
         state = b.state_from_history("1. e2 e8 2. e3 e7")
         self.assertEqual(state.red, b.text_to_coord("e3"))
@@ -219,11 +222,49 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(payload["recommendation"], "e2")
         client_cls.return_value.get_move.assert_called_once_with([])
 
+    @patch("barricade_web.lookup_expert_cache", return_value=None)
+    @patch("barricade_web.BarricadeGgAiClient")
+    def test_external_expert_reuses_backend_client(self, client_cls, _cache):
+        client_cls.return_value.get_move.return_value = "e2"
+        state = b.State()
+        for _ in range(2):
+            action, _, _, resolved = web.recommend_action(
+                state,
+                search_time=0.05,
+                depth=2,
+                engine_kind="expert",
+                avoid_actions=set(),
+                history_tokens=[],
+            )
+            self.assertEqual(action, "e2")
+            self.assertEqual(resolved, "expert")
+        client_cls.assert_called_once_with(difficulty="expert", timeout=web.EXPERT_TIMEOUT_SECONDS)
+        self.assertEqual(client_cls.return_value.get_move.call_count, 2)
+
     def test_expert_coordinate_mirror_for_blue_first_mode(self):
         self.assertEqual(expert.mirror_action("e2"), "e8")
         self.assertEqual(expert.mirror_action("e8"), "e2")
         self.assertEqual(expert.mirror_action("ha1"), "ha8")
         self.assertEqual(expert.mirror_action("va3"), "va6")
+
+    def test_expert_client_reuses_socket_session(self):
+        client = expert.BarricadeGgAiClient(timeout=1.0)
+        with patch.object(client, "_open_session", return_value="sid-1") as open_session:
+            with patch.object(
+                client,
+                "_request",
+                side_effect=[
+                    "",
+                    "",
+                    "",
+                    '43/ai,0[{"ok":true,"move":"e2"}]',
+                    "",
+                    '43/ai,0[{"ok":true,"move":"e3"}]',
+                ],
+            ):
+                self.assertEqual(client.get_move([]), "e2")
+                self.assertEqual(client.get_move(["e2", "e8"]), "e3")
+        open_session.assert_called_once()
 
     @patch("barricade_web.lookup_expert_cache", return_value=None)
     @patch("barricade_web.BarricadeGgAiClient")

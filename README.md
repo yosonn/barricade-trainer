@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.30.13
+## Current Status: 2026.07.01.01
 
 The production web/API backend still exposes a hybrid engine, but Hybrid now
 resolves to the stable alpha-beta policy by default. A 10-game Hybrid-vs-Expert
@@ -17,6 +17,13 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.07.01.01` speeds up Barricade.gg Expert mode. The Expert client
+now keeps its Socket.IO polling session open across consecutive moves and the
+backend reuses a process-level Expert client instead of opening a fresh remote
+session for every recommendation. Cached openings still return instantly; cache
+misses should avoid the repeated handshake cost that made the local UI slower
+than the two-phone Expert-copy workflow.
 
 Version `2026.06.30.13` integrates the new 40-game Expert opening-prefix
 dataset. The local Expert cache now covers the stronger continuation

@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.30.11
+## Current Status: 2026.06.30.12
 
 The production web/API backend still exposes a hybrid engine, but Hybrid now
 resolves to the stable alpha-beta policy by default. A 10-game Hybrid-vs-Expert
@@ -17,6 +17,15 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.30.12` adds a repeatable local collection script for 20
+Barricade.gg Expert-vs-Expert games: run `run_expert_selfplay_20.cmd` from the
+repo root. It exports complete `games.jsonl`, `turns.jsonl`, `turns.csv`,
+`summary.json`, and `summary.md` files under `backtest_runs/`. The Expert
+self-play analyzer now reports opening trees, trap/prep wall stats, race
+decision buckets, and optional hybrid action ranking. Based on the 40-game
+Expert data, Hybrid now uses an Expert-like wall opening (`he3/hf6/hc3/vd4`)
+and a wall-prior heuristic for common Expert direct and prep walls.
 
 Version `2026.06.30.11` adds a high-confidence Barricade.gg Expert cache and
 Expert self-play analysis workflow. Expert mode now checks an opening/state

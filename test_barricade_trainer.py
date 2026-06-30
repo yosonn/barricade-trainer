@@ -76,7 +76,7 @@ class BarricadeTrainerTests(unittest.TestCase):
     def test_opening_uses_expert_style_tempo_development(self):
         state = b.state_from_history("e2 e8 e3 e7 e4 e6")
         best, _, _ = b.search_best(state, time_limit=0.2, max_depth=3)
-        self.assertEqual(best, "e5")
+        self.assertEqual(best, "he3")
 
     def test_blue_opening_book_develops_before_back_rank_walls(self):
         state = b.state_from_history("e2 e8 e3 e7 e4")
@@ -292,14 +292,14 @@ class BarricadeTrainerTests(unittest.TestCase):
         state = b.state_from_history("e2 e8 e3 e7 e4 e6")
         payload = web.state_payload(state, "red", 0.05, 3, recommend_for_turn=True)
         self.assertEqual(payload["analysis"]["resolved_engine"], "alpha-beta")
-        self.assertEqual(payload["recommendation"], "e5")
+        self.assertEqual(payload["recommendation"], "he3")
 
     def test_reported_strong_computer_game_avoids_mcts_opening_trap(self):
         history = "e2 e8 e3 e7 e4 e6 he2 hf6"
         state = b.state_from_history(history)
         payload = web.state_payload(state, "red", 0.05, 3, recommend_for_turn=True)
         self.assertEqual(payload["analysis"]["resolved_engine"], "alpha-beta")
-        self.assertEqual(payload["recommendation"], "e5")
+        self.assertEqual(payload["recommendation"], "he3")
 
     def test_expert_cache_hits_opening_without_api(self):
         hit = lookup_expert_cache([])

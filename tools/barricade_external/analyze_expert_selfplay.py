@@ -58,7 +58,14 @@ def normalize_game(game: dict[str, Any], index: int) -> dict[str, Any]:
     }
 
 
-def analyze_turn(game: dict[str, Any], ply: int, state: engine.State, history_before: list[str], action: str) -> dict[str, Any]:
+def analyze_turn(
+    game: dict[str, Any],
+    ply: int,
+    state: engine.State,
+    history_before: list[str],
+    action: str,
+    with_hybrid_ranking: bool = False,
+) -> dict[str, Any]:
     side = state.turn
     opp = engine.opponent(side)
     self_before, self_path_before = engine.movement_path(state, side)
@@ -70,6 +77,10 @@ def analyze_turn(game: dict[str, Any], ply: int, state: engine.State, history_be
     wall_orient = ""
     if kind == "wall":
         wall_orient = engine.text_to_wall(action)[0]
+    expert_rank = None
+    if with_hybrid_ranking:
+        ordered = engine.ordered_actions(state, limit_walls=18)
+        expert_rank = ordered.index(action) + 1 if action in ordered else None
     return {
         "game": game["id"],
         "ply": ply,
@@ -94,17 +105,18 @@ def analyze_turn(game: dict[str, Any], ply: int, state: engine.State, history_be
         "opp_path_after": " ".join(engine.coord_to_text(pos) for pos in opp_path_after),
         "state_key": expert_state_key(state),
         "history_before": " ".join(history_before),
+        "hybrid_rank": expert_rank,
     }
 
 
-def build_turns(games: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def build_turns(games: list[dict[str, Any]], with_hybrid_ranking: bool = False) -> list[dict[str, Any]]:
     turns: list[dict[str, Any]] = []
     for raw_index, raw_game in enumerate(games, 1):
         game = normalize_game(raw_game, raw_index)
         state = engine.State()
         history_before: list[str] = []
         for ply, action in enumerate(game["history"], 1):
-            turns.append(analyze_turn(game, ply, state, history_before, action))
+            turns.append(analyze_turn(game, ply, state, history_before, action, with_hybrid_ranking))
             state = engine.apply_action(state, action)
             history_before.append(action)
     return turns
@@ -137,6 +149,99 @@ def cache_candidates(turns: list[dict[str, Any]], min_count: int, min_confidence
     return rows
 
 
+def opening_tree(turns: list[dict[str, Any]], max_ply: int = 16) -> list[dict[str, Any]]:
+    buckets: dict[tuple[int, str], Counter[str]] = defaultdict(Counter)
+    for turn in turns:
+        ply = int(turn["ply"])
+        if ply > max_ply:
+            continue
+        buckets[(ply, str(turn["history_before"]))][str(turn["action"])] += 1
+    rows: list[dict[str, Any]] = []
+    for (ply, history), actions in buckets.items():
+        total = sum(actions.values())
+        best_action, best_count = actions.most_common(1)[0]
+        rows.append({
+            "ply": ply,
+            "history": history,
+            "best_action": best_action,
+            "count": best_count,
+            "total": total,
+            "confidence": round(best_count / total, 4),
+            "actions": dict(actions),
+        })
+    rows.sort(key=lambda row: (row["ply"], -row["total"], row["history"]))
+    return rows
+
+
+def trap_wall_stats(turns: list[dict[str, Any]]) -> dict[str, Any]:
+    by_game: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for turn in turns:
+        by_game[str(turn["game"])].append(turn)
+    direct: list[dict[str, Any]] = []
+    prep: list[dict[str, Any]] = []
+    quiet: list[dict[str, Any]] = []
+    for game_turns in by_game.values():
+        ordered = sorted(game_turns, key=lambda turn: int(turn["ply"]))
+        for index, turn in enumerate(ordered):
+            if turn["kind"] != "wall":
+                continue
+            if int(turn["opp_delay"]) > 0:
+                direct.append(turn)
+                continue
+            later_same_side = [
+                later for later in ordered[index + 1:index + 7]
+                if later["side"] == turn["side"] and later["kind"] == "wall" and int(later["opp_delay"]) > 0
+            ]
+            if later_same_side:
+                prep.append(turn)
+            else:
+                quiet.append(turn)
+    return {
+        "direct_effective_count": len(direct),
+        "prep_wall_count": len(prep),
+        "quiet_zero_delay_count": len(quiet),
+        "top_direct_walls": Counter(turn["action"] for turn in direct).most_common(15),
+        "top_prep_walls": Counter(turn["action"] for turn in prep).most_common(15),
+        "top_quiet_walls": Counter(turn["action"] for turn in quiet).most_common(15),
+    }
+
+
+def race_decision_stats(turns: list[dict[str, Any]]) -> dict[str, Any]:
+    buckets: dict[str, Counter[str]] = defaultdict(Counter)
+    for turn in turns:
+        self_dist = int(turn["self_dist_before"])
+        opp_dist = int(turn["opp_dist_before"])
+        if self_dist <= 3:
+            bucket = "self_dist_le_3"
+        elif opp_dist <= 3:
+            bucket = "opp_dist_le_3"
+        elif abs(self_dist - opp_dist) <= 1:
+            bucket = "close_race"
+        elif self_dist + 3 <= opp_dist:
+            bucket = "leading_by_3_plus"
+        elif opp_dist + 3 <= self_dist:
+            bucket = "trailing_by_3_plus"
+        else:
+            bucket = "balanced"
+        action_type = "wall" if turn["kind"] == "wall" else "progress" if int(turn["self_progress"]) > 0 else "reposition"
+        buckets[bucket][action_type] += 1
+    return {bucket: dict(counts) for bucket, counts in sorted(buckets.items())}
+
+
+def hybrid_rank_stats(turns: list[dict[str, Any]]) -> dict[str, Any]:
+    ranks = [int(turn["hybrid_rank"]) for turn in turns if turn.get("hybrid_rank") not in (None, "")]
+    if not ranks:
+        return {}
+    return {
+        "ranked_turns": len(ranks),
+        "top1_rate": round(sum(rank == 1 for rank in ranks) / len(ranks), 4),
+        "top3_rate": round(sum(rank <= 3 for rank in ranks) / len(ranks), 4),
+        "top5_rate": round(sum(rank <= 5 for rank in ranks) / len(ranks), 4),
+        "avg_rank": round(statistics.mean(ranks), 2),
+        "rank_counts": dict(Counter(ranks).most_common(15)),
+    }
+
+
 def summarize(games: list[dict[str, Any]], turns: list[dict[str, Any]], candidates: list[dict[str, Any]]) -> dict[str, Any]:
     winners = Counter(normalize_game(game, index)["winner"] or "none" for index, game in enumerate(games, 1))
     wall_turns = [turn for turn in turns if turn["kind"] == "wall"]
@@ -161,6 +266,10 @@ def summarize(games: list[dict[str, Any]], turns: list[dict[str, Any]], candidat
         "avg_request_ms": round(statistics.mean(request_times), 1) if request_times else None,
         "cache_candidates": len(candidates),
         "top_cache_candidates": candidates[:20],
+        "opening_tree": opening_tree(turns)[:80],
+        "trap_walls": trap_wall_stats(turns),
+        "race_decisions": race_decision_stats(turns),
+        "hybrid_rank": hybrid_rank_stats(turns),
     }
 
 
@@ -185,15 +294,28 @@ def write_outputs(out_dir: Path, games: list[dict[str, Any]], turns: list[dict[s
         f"- Delay walls / zero-delay walls: {summary['delay_walls']} / {summary['zero_delay_walls']}",
         f"- Avg request ms: {summary['avg_request_ms']}",
         f"- High-confidence cache candidates: {summary['cache_candidates']}",
+        f"- Hybrid rank top1/top3/top5: {summary['hybrid_rank'].get('top1_rate')} / {summary['hybrid_rank'].get('top3_rate')} / {summary['hybrid_rank'].get('top5_rate')}",
         "",
         "## Top Cache Candidates",
         "",
     ]
     for row in candidates[:20]:
         lines.append(f"- {row['source']} `{row['key']}` -> `{row['best_action']}` ({row['count']}/{row['total']}, {row['confidence']})")
+    lines.extend(["", "## Opening Tree", ""])
+    for row in summary["opening_tree"][:30]:
+        lines.append(f"- ply {row['ply']} `{row['history']}` -> `{row['best_action']}` ({row['count']}/{row['total']}, {row['confidence']})")
     lines.extend(["", "## Top Walls", ""])
     for action, count in summary["top_walls"]:
         lines.append(f"- `{action}`: {count}")
+    lines.extend(["", "## Trap Wall Summary", ""])
+    trap = summary["trap_walls"]
+    lines.append(f"- Direct effective walls: {trap['direct_effective_count']}")
+    lines.append(f"- Prep zero-delay walls: {trap['prep_wall_count']}")
+    lines.append(f"- Quiet zero-delay walls: {trap['quiet_zero_delay_count']}")
+    lines.append(f"- Top prep walls: {trap['top_prep_walls']}")
+    lines.extend(["", "## Race Decisions", ""])
+    for bucket, counts in summary["race_decisions"].items():
+        lines.append(f"- {bucket}: {counts}")
     (out_dir / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -203,9 +325,10 @@ def main() -> int:
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--min-count", type=int, default=3)
     parser.add_argument("--min-confidence", type=float, default=0.7)
+    parser.add_argument("--with-hybrid-ranking", action="store_true")
     args = parser.parse_args()
     games = load_games(args.input)
-    turns = build_turns(games)
+    turns = build_turns(games, with_hybrid_ranking=args.with_hybrid_ranking)
     candidates = cache_candidates(turns, args.min_count, args.min_confidence)
     write_outputs(args.out_dir, games, turns, candidates)
     print(f"games={len(games)} turns={len(turns)} candidates={len(candidates)}")

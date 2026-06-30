@@ -20,6 +20,40 @@ ROOT_ACTION_LIMIT = 24
 SEARCH_ACTION_LIMIT = 18
 QUIESCENCE_ACTION_LIMIT = 10
 QUIESCENCE_EXTENSION_LIMIT = 1
+EXPERT_WALL_PRIORS = {
+    "he3": 29,
+    "hc3": 33,
+    "vd4": 29,
+    "ha3": 24,
+    "hf6": 20,
+    "hh6": 16,
+    "he4": 14,
+    "ve5": 14,
+    "hc6": 13,
+    "hh7": 12,
+    "he6": 12,
+    "hg3": 11,
+    "hg4": 11,
+    "hf1": 11,
+    "hf7": 11,
+    "hd5": 10,
+    "hf8": 10,
+    "vf5": 10,
+    "hd1": 9,
+    "vd6": 9,
+}
+EXPERT_PREP_WALL_PRIORS = {
+    "vd4": 19,
+    "ha3": 17,
+    "hf6": 17,
+    "hc3": 12,
+    "hh6": 11,
+    "ve5": 8,
+    "hd5": 5,
+    "va2": 5,
+    "ha6": 5,
+    "vd5": 5,
+}
 
 Coord = tuple[int, int]
 Wall = tuple[str, int, int]
@@ -515,6 +549,45 @@ def opening_tempo_adjustment(state: State, action: str, perspective: str) -> flo
     return 0.0
 
 
+def expert_wall_prior_adjustment(state: State, action: str, perspective: str) -> float:
+    """Bias wall ordering toward high-frequency Expert self-play wall motifs."""
+    if is_pawn_action(action):
+        return 0.0
+
+    prior = EXPERT_WALL_PRIORS.get(action, 0)
+    prep_prior = EXPERT_PREP_WALL_PRIORS.get(action, 0)
+    if not prior and not prep_prior:
+        return 0.0
+
+    opp = opponent(perspective)
+    my_dist, _ = movement_path(state, perspective)
+    opp_dist, _ = movement_path(state, opp)
+    child = apply_action(state, action)
+    new_my_dist, _ = movement_path(child, perspective)
+    new_opp_dist, _ = movement_path(child, opp)
+    self_delay = new_my_dist - my_dist
+    opp_delay = new_opp_dist - opp_dist
+    early_wall_phase = len(state.walls) <= 10 and state.walls_left(perspective) >= 4
+    close_or_tactical = abs(my_dist - opp_dist) <= 3 or min(my_dist, opp_dist) <= 5
+
+    if not early_wall_phase and not close_or_tactical:
+        return 0.0
+
+    score = prior * 6 + prep_prior * 9
+    if opp_delay > 0:
+        score += opp_delay * 85
+    elif prep_prior:
+        score += 80
+    else:
+        score -= 60
+
+    if self_delay > 0:
+        score -= self_delay * 95
+    if state.walls_left(perspective) <= 2 and opp_delay <= 0:
+        score -= 160
+    return score
+
+
 def race_conversion_adjustment(state: State, action: str, perspective: str) -> float:
     """Prefer converting a large race lead into progress instead of spending final walls."""
     opp = opponent(perspective)
@@ -685,7 +758,34 @@ def opening_book_action(state: State) -> str | None:
         and state.blue_walls >= 9
         and len(state.walls) <= 2
     ):
-        return "e5"
+        return "he3"
+    if (
+        state.turn == "blue"
+        and state.red == text_to_coord("e4")
+        and state.blue == text_to_coord("e6")
+        and state.red_walls == 9
+        and state.blue_walls == 10
+        and state.walls == frozenset({text_to_wall("he3")})
+    ):
+        return "hf6"
+    if (
+        state.turn == "red"
+        and state.red == text_to_coord("e4")
+        and state.blue == text_to_coord("e6")
+        and state.red_walls == 9
+        and state.blue_walls == 9
+        and state.walls == frozenset({text_to_wall("he3"), text_to_wall("hf6")})
+    ):
+        return "hc3"
+    if (
+        state.turn == "blue"
+        and state.red == text_to_coord("e4")
+        and state.blue == text_to_coord("e6")
+        and state.red_walls == 8
+        and state.blue_walls == 9
+        and state.walls == frozenset({text_to_wall("he3"), text_to_wall("hf6"), text_to_wall("hc3")})
+    ):
+        return "vd4"
     if (
         state.turn == "blue"
         and state.red == text_to_coord("e3")
@@ -836,6 +936,7 @@ def ordered_actions(state: State, limit_walls: int = 18) -> list[str]:
         gain += static_eval(trial, state.turn) * 0.02
         gain += wall_resource_adjustment(state, action, state.turn)
         gain += opening_tempo_adjustment(state, action, state.turn)
+        gain += expert_wall_prior_adjustment(state, action, state.turn)
         gain += race_conversion_adjustment(state, action, state.turn)
         gain += future_wall_threat_adjustment(state, action, state.turn)
         if opp_delay <= 0:
@@ -871,8 +972,11 @@ def search_best(
     perspective = state.turn
     avoid_actions = avoid_actions or set()
     book_action = opening_book_action(state) if max_depth >= 3 else None
-    if book_action and book_action in ordered_actions(state, limit_walls=16):
-        return book_action, static_eval(apply_action(state, book_action), perspective), 0
+    if book_action:
+        try:
+            return book_action, static_eval(apply_action(state, book_action), perspective), 0
+        except ValueError:
+            pass
 
     root_actions = ordered_actions(state, limit_walls=16)[:ROOT_ACTION_LIMIT]
     root_my_dist, _ = movement_path(state, perspective)
@@ -993,6 +1097,7 @@ def search_best(
         score += wall_resource_adjustment(state, action, perspective)
         score += defensive_wall_adjustment(state, action, perspective)
         score += opening_tempo_adjustment(state, action, perspective)
+        score += expert_wall_prior_adjustment(state, action, perspective)
         score += race_conversion_adjustment(state, action, perspective)
         score += pawn_race_adjustment(state, action, perspective)
         score += future_wall_threat_adjustment(state, action, perspective)

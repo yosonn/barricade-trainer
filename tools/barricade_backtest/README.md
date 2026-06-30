@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.30.11`
+Current project version: `2026.06.30.12`
 
 The tool supports two execution modes:
 
@@ -28,6 +28,18 @@ python tools\barricade_external\play_barricade_gg.py `
   --out-dir backtest_runs\barricade-gg-expert-red
 ```
 
+Collect 20 complete Barricade.gg Expert-vs-Expert games from your computer:
+
+```powershell
+.\run_expert_selfplay_20.cmd
+```
+
+You can pass extra options through the command file, for example:
+
+```powershell
+.\run_expert_selfplay_20.cmd --games 20 --pause-sec 1.5 --retries 2
+```
+
 Run the same tournament entirely inside the local repo:
 
 ```powershell
@@ -47,6 +59,11 @@ Analyze Expert-vs-Expert logs and rebuild high-confidence cache candidates:
 Version `2026.06.30.11` adds the Expert opening/state cache and the self-play
 analysis script. Expert mode now tries the high-confidence cache first, then
 falls back to Barricade.gg's API on misses.
+
+Version `2026.06.30.12` adds `collect_expert_selfplay.py` plus
+`run_expert_selfplay_20.cmd`, expands the self-play analyzer with opening tree,
+trap wall, race decision, and optional hybrid ranking reports, and retunes
+Hybrid with Expert-like opening walls and Expert wall priors.
 
 Version `2026.06.30.10` changes Hybrid to resolve to the stable alpha-beta
 policy by default after a 10-game Expert loss audit. MCTS remains available as

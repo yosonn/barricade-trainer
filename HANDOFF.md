@@ -698,6 +698,36 @@ Verification:
   at 20/20 confidence in the detailed cache candidates.
 - Python unit tests, compile checks, frontend JS syntax checks, analysis CLI
   smoke, and local HTTP `/api/analyze` Expert cache smoke passed.
+
+## 2026.06.30.12 Expert Self-Play Collector and Wall-Prior Segment
+
+Changes:
+
+- Added `tools/barricade_external/collect_expert_selfplay.py` and
+  `run_expert_selfplay_20.cmd`. Running the command file collects 20 complete
+  Barricade.gg Expert-vs-Expert games and exports `games.jsonl`, `turns.jsonl`,
+  `turns.csv`, `summary.json`, and `summary.md`.
+- Expanded `analyze_expert_selfplay.py` with opening tree, direct/prep/quiet
+  wall classification, race decision buckets, and optional hybrid ranking via
+  `--with-hybrid-ranking`.
+- Re-analyzed the current 40-game Expert self-play set. Main findings:
+  first six plies are fixed `e2 e8 e3 e7 e4 e6`; ply 7 branches into walls
+  (`he3` 15/40, `hc3` 10/40, `ha3` 9/40, `hd3` 6/40); top prep walls include
+  `vd4`, `ha3`, `hf6`, `hc3`, and `hh6`; direct effective walls are led by
+  `he3`, `hc3`, `hg3`, `he6`, and `he4`.
+- Updated Hybrid opening book from the temporary `e5` tempo move to the more
+  Expert-like wall branch `he3 -> hf6 -> hc3 -> vd4`.
+- Added Expert wall priors to Hybrid action ordering so common direct and
+  prep-wall motifs receive context-sensitive bonuses.
+- Updated Expert cache counts from the 40-game dataset and bumped app/cache
+  version to `2026.06.30.12`.
+
+Verification:
+
+- `analyze_expert_selfplay.py` generated `backtest_runs/expert-selfplay-deep-40`
+  from the 40-game merged set in quick mode.
+- Python unit tests, compile checks, frontend JS syntax checks, collector CLI
+  help/smoke, and local HTTP `/api/analyze` smoke passed.
 ## 2026.06.30.03 Barricade.gg Expert Harness and Next-Wall Threat Segment
 
 ### Why

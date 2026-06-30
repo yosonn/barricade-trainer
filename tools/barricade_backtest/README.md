@@ -40,6 +40,18 @@ You can pass extra options through the command file, for example:
 .\run_expert_selfplay_20.cmd --games 20 --pause-sec 1.5 --retries 2
 ```
 
+Continue collection from a known opening prefix:
+
+```powershell
+.\run_expert_selfplay_20.cmd `
+  --prefix "e2 e8 e3 e7 e4 e6 he3 hf6" `
+  --prefix-id expert-mainline-he3
+```
+
+The collector stores `prefix_id`, `prefix`, and `prefix_len` on both game and
+turn records. `history_text` and `history_before` always contain the complete
+history, including the prefix.
+
 Run the same tournament entirely inside the local repo:
 
 ```powershell

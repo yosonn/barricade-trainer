@@ -8,6 +8,7 @@ import barricade_expert as expert
 from barricade_expert_cache import expert_state_key, lookup_expert_cache
 import barricade_web as web
 from tools.barricade_backtest import audit_losses
+from tools.barricade_external import collect_expert_selfplay
 from tools.barricade_external import live_sync_core
 
 
@@ -337,6 +338,36 @@ class BarricadeTrainerTests(unittest.TestCase):
             expert_state_key(b.State()),
             '{"blue":"e9","blue_walls":10,"red":"e1","red_walls":10,"turn":"red","walls":[]}',
         )
+
+    @patch("tools.barricade_external.collect_expert_selfplay.get_expert_move")
+    @patch("tools.barricade_external.collect_expert_selfplay.BarricadeGgAiClient")
+    def test_collect_expert_selfplay_continues_from_prefix(self, _client_cls, get_move):
+        get_move.return_value = ("he3", 12.3, 0)
+        args = type("Args", (), {
+            "timeout": 1.0,
+            "pause_sec": 0.0,
+            "prefix_tokens": b.tokenize_history("e2 e8 e3 e7 e4 e6"),
+            "prefix_id": "mainline",
+            "max_plies": 7,
+            "retries": 0,
+            "retry_sleep": 0.0,
+            "worker_id": "test-worker",
+        })()
+        game = collect_expert_selfplay.play_game(1, args)
+        self.assertEqual(game["prefix_id"], "mainline")
+        self.assertEqual(game["prefix"], "e2 e8 e3 e7 e4 e6")
+        self.assertEqual(game["prefix_len"], 6)
+        self.assertEqual(game["history"], ["e2", "e8", "e3", "e7", "e4", "e6", "he3"])
+        self.assertEqual(game["history_text"], "e2 e8 e3 e7 e4 e6 he3")
+        self.assertEqual(game["turns"][0]["ply"], 7)
+        self.assertEqual(game["turns"][0]["history_before"], "e2 e8 e3 e7 e4 e6")
+        self.assertEqual(game["turns"][0]["prefix_id"], "mainline")
+        get_move.assert_called_once()
+        self.assertEqual(get_move.call_args.args[1], ["e2", "e8", "e3", "e7", "e4", "e6"])
+
+    def test_collect_expert_selfplay_rejects_illegal_prefix(self):
+        with self.assertRaises(ValueError):
+            collect_expert_selfplay.validate_prefix("e2 a1")
 
     def test_barricade_gg_expert_red_avoids_next_wall_trap(self):
         history = "e2 e8 e3 e7 e4 e6 hd4 hf6 hf3 ha7 f4 hh6"

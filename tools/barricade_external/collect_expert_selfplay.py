@@ -62,6 +62,9 @@ def analyze_turn(
     action: str,
     request_ms: float,
     retries_used: int,
+    prefix_id: str,
+    prefix: str,
+    prefix_len: int,
 ) -> dict[str, Any]:
     side = state.turn
     opp = engine.opponent(side)
@@ -82,6 +85,9 @@ def analyze_turn(
     return {
         "worker_id": worker_id,
         "game": game_no,
+        "prefix_id": prefix_id,
+        "prefix": prefix,
+        "prefix_len": prefix_len,
         "ply": ply,
         "phase": phase_of_ply(ply),
         "side": side,
@@ -116,19 +122,34 @@ def analyze_turn(
 
 def play_game(game_no: int, args: argparse.Namespace) -> dict[str, Any]:
     client = BarricadeGgAiClient("expert", timeout=args.timeout, pause_sec=args.pause_sec)
-    history: list[str] = []
+    prefix_tokens = list(getattr(args, "prefix_tokens", []))
+    prefix = " ".join(prefix_tokens)
+    prefix_len = len(prefix_tokens)
+    history: list[str] = list(prefix_tokens)
     turns: list[dict[str, Any]] = []
     errors: list[str] = []
     terminal_reason = "max_plies"
-    for ply in range(1, args.max_plies + 1):
+    for ply in range(prefix_len + 1, args.max_plies + 1):
         state = engine.state_from_history(" ".join(history), start_turn="red")
         if web.winner(state):
             terminal_reason = "winner"
             break
         try:
             history_before = list(history)
-            action, request_ms, retries_used = get_expert_move(client, history, args.retries, args.retry_sleep)
-            row = analyze_turn(args.worker_id, game_no, ply, state, history_before, action, request_ms, retries_used)
+            action, request_ms, retries_used = get_expert_move(client, list(history), args.retries, args.retry_sleep)
+            row = analyze_turn(
+                args.worker_id,
+                game_no,
+                ply,
+                state,
+                history_before,
+                action,
+                request_ms,
+                retries_used,
+                args.prefix_id,
+                prefix,
+                prefix_len,
+            )
             turns.append(row)
             history.append(action)
             print(f"G{game_no:02d} ply {ply:03d} {state.turn} {action} {request_ms}ms retry={retries_used}", flush=True)
@@ -140,6 +161,9 @@ def play_game(game_no: int, args: argparse.Namespace) -> dict[str, Any]:
     return {
         "worker_id": args.worker_id,
         "game": game_no,
+        "prefix_id": args.prefix_id,
+        "prefix": prefix,
+        "prefix_len": prefix_len,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "winner": web.winner(final_state),
         "plies": len(history),
@@ -153,14 +177,18 @@ def play_game(game_no: int, args: argparse.Namespace) -> dict[str, Any]:
 
 def summarize(games: list[dict[str, Any]], turns: list[dict[str, Any]]) -> dict[str, Any]:
     completed = [game for game in games if game["terminal_reason"] == "winner"]
+    errored = [game for game in games if game["terminal_reason"] == "expert_error"]
     wall_turns = [turn for turn in turns if turn["kind"] == "wall"]
     request_ms = [float(turn["request_ms"]) for turn in turns]
     return {
         "worker_id": games[0]["worker_id"] if games else "",
+        "prefix_id": games[0].get("prefix_id", "") if games else "",
+        "prefix": games[0].get("prefix", "") if games else "",
+        "prefix_len": games[0].get("prefix_len", 0) if games else 0,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "games": len(games),
         "completed_games": len(completed),
-        "errored_games": len(games) - len(completed),
+        "errored_games": len(errored),
         "winners": dict(Counter(game["winner"] or "none" for game in games)),
         "terminal_reasons": dict(Counter(game["terminal_reason"] for game in games)),
         "avg_plies_completed": round(statistics.mean(game["plies"] for game in completed), 2) if completed else 0,
@@ -196,6 +224,9 @@ def write_outputs(out_dir: Path, games: list[dict[str, Any]], turns: list[dict[s
         "# Expert-vs-Expert Self-Play Collection",
         "",
         f"- Games: {summary['games']}",
+        f"- Prefix ID: {summary['prefix_id'] or '-'}",
+        f"- Prefix length: {summary['prefix_len']}",
+        f"- Prefix: {summary['prefix'] or '-'}",
         f"- Completed: {summary['completed_games']}",
         f"- Winners: {summary['winners']}",
         f"- Avg plies completed: {summary['avg_plies_completed']}",
@@ -226,14 +257,28 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pause-sec", type=float, default=1.2)
     parser.add_argument("--worker-id", default="manual-expert-20")
     parser.add_argument("--out-dir", type=Path)
+    parser.add_argument("--prefix", default="")
+    parser.add_argument("--prefix-id", default="")
     return parser.parse_args()
+
+
+def validate_prefix(prefix: str) -> list[str]:
+    tokens = engine.tokenize_history(prefix)
+    engine.state_from_history(" ".join(tokens), start_turn="red")
+    return tokens
 
 
 def main() -> int:
     args = parse_args()
+    try:
+        args.prefix_tokens = validate_prefix(args.prefix)
+    except Exception as exc:
+        print(f"Invalid --prefix: {exc}", file=sys.stderr)
+        return 2
     if args.out_dir is None:
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        args.out_dir = Path("backtest_runs") / f"expert-vs-expert-{args.games}-{stamp}"
+        prefix_part = f"-{args.prefix_id}" if args.prefix_id else ""
+        args.out_dir = Path("backtest_runs") / f"expert-vs-expert-{args.games}{prefix_part}-{stamp}"
     games: list[dict[str, Any]] = []
     turns: list[dict[str, Any]] = []
     for game_no in range(1, args.games + 1):

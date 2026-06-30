@@ -670,6 +670,34 @@ Verification:
   states.
 - Python unit tests, compile checks, frontend JS syntax checks, and local HTTP
   `/api/analyze` smoke passed.
+
+## 2026.06.30.11 Expert Cache and Self-Play Analytics Segment
+
+Changes:
+
+- Compared the two Expert-vs-Expert 20-game datasets. The parallel run contains
+  enriched per-turn data (`request_ms`, retries, path, score, distance deltas,
+  state keys). The manual run contains lighter raw move/request logs, but its
+  histories can be reconstructed locally into the same enriched schema.
+- Added `barricade_expert_cache.py` with high-confidence opening/state cache
+  entries extracted from the 40-game Expert-vs-Expert merged data.
+- Expert mode now checks this cache before calling Barricade.gg. Cache hits
+  return immediately and expose `resolved_engine` as `expert:opening-book` or
+  `expert:state-cache`; misses still call the remote Expert API.
+- Added `tools/barricade_external/analyze_expert_selfplay.py` to rebuild
+  enriched turn analytics, opening/action distributions, wall statistics, and
+  cache candidates from Expert self-play logs.
+- Bumped app/cache version to `2026.06.30.11`.
+
+Verification:
+
+- Confirmed the 40-game merged data has 40 completed games, 2182 turns, blue
+  22 wins vs red 18 wins, wall rate about 36.9%, and average Expert request
+  time about 3882 ms.
+- Confirmed the high-confidence opening sequence `e2 e8 e3 e7 e4 e6` appears
+  at 20/20 confidence in the detailed cache candidates.
+- Python unit tests, compile checks, frontend JS syntax checks, analysis CLI
+  smoke, and local HTTP `/api/analyze` Expert cache smoke passed.
 ## 2026.06.30.03 Barricade.gg Expert Harness and Next-Wall Threat Segment
 
 ### Why

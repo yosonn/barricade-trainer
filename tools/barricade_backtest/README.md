@@ -2,7 +2,7 @@
 
 Backtesting tools for Barricade Trainer.
 
-Current project version: `2026.06.30.10`
+Current project version: `2026.06.30.11`
 
 The tool supports two execution modes:
 
@@ -28,18 +28,31 @@ python tools\barricade_external\play_barricade_gg.py `
   --out-dir backtest_runs\barricade-gg-expert-red
 ```
 
-Version `2026.06.30.10` changes Hybrid to resolve to the stable alpha-beta
-policy by default after a 10-game Expert loss audit. MCTS remains available as
-an explicit experimental model, and the opening book now avoids the repeated
-red `hd4` self-delay and blue early back-rank walling patterns from that loss
-set.
-
 Run the same tournament entirely inside the local repo:
 
 ```powershell
 & 'C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
   tools\barricade_backtest\backtest_loop.py --mode local --games 10 --baseline-depth 2 --candidate-depth 3 --time 0.05
 ```
+
+Analyze Expert-vs-Expert logs and rebuild high-confidence cache candidates:
+
+```powershell
+& 'C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  tools\barricade_external\analyze_expert_selfplay.py `
+  --input backtest_runs\expert-vs-expert-40-merged-20260630-110206 `
+  --out-dir backtest_runs\expert-selfplay-analysis-latest
+```
+
+Version `2026.06.30.11` adds the Expert opening/state cache and the self-play
+analysis script. Expert mode now tries the high-confidence cache first, then
+falls back to Barricade.gg's API on misses.
+
+Version `2026.06.30.10` changes Hybrid to resolve to the stable alpha-beta
+policy by default after a 10-game Expert loss audit. MCTS remains available as
+an explicit experimental model, and the opening book now avoids the repeated
+red `hd4` self-delay and blue early back-rank walling patterns from that loss
+set.
 
 Compare the alpha-beta fallback backend against the production MCTS backend:
 

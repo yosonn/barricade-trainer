@@ -5,6 +5,7 @@ from unittest.mock import patch
 import barricade_mcts as mcts
 import barricade_trainer as b
 import barricade_expert as expert
+from barricade_expert_cache import expert_state_key, lookup_expert_cache
 import barricade_web as web
 from tools.barricade_backtest import audit_losses
 from tools.barricade_external import live_sync_core
@@ -182,8 +183,9 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(payload["analysis"]["resolved_engine"], "alpha-beta")
         self.assertIn(payload["recommendation"], payload["legal_actions"])
 
+    @patch("barricade_web.lookup_expert_cache", return_value=None)
     @patch("barricade_web.BarricadeGgAiClient")
-    def test_state_payload_can_use_external_expert_engine(self, client_cls):
+    def test_state_payload_can_use_external_expert_engine(self, client_cls, _cache):
         client_cls.return_value.get_move.return_value = "e2"
         state = b.State()
         payload = web.state_payload(
@@ -206,8 +208,9 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(expert.mirror_action("ha1"), "ha8")
         self.assertEqual(expert.mirror_action("va3"), "va6")
 
+    @patch("barricade_web.lookup_expert_cache", return_value=None)
     @patch("barricade_web.BarricadeGgAiClient")
-    def test_external_expert_blue_first_opening_is_mirrored(self, client_cls):
+    def test_external_expert_blue_first_opening_is_mirrored(self, client_cls, _cache):
         client_cls.return_value.get_move.return_value = "e2"
         state = b.State(turn="blue")
         payload = web.state_payload(
@@ -223,8 +226,9 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(payload["recommendation"], "e8")
         client_cls.return_value.get_move.assert_called_once_with([])
 
+    @patch("barricade_web.lookup_expert_cache", return_value=None)
     @patch("barricade_web.BarricadeGgAiClient")
-    def test_external_expert_blue_first_history_is_mirrored_for_api(self, client_cls):
+    def test_external_expert_blue_first_history_is_mirrored_for_api(self, client_cls, _cache):
         client_cls.return_value.get_move.return_value = "e8"
         state = b.state_from_history("e8", start_turn="blue")
         payload = web.state_payload(
@@ -240,8 +244,9 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(payload["recommendation"], "e2")
         client_cls.return_value.get_move.assert_called_once_with(["e2"])
 
+    @patch("barricade_web.lookup_expert_cache", return_value=None)
     @patch("barricade_web.BarricadeGgAiClient")
-    def test_external_expert_illegal_move_is_rejected(self, client_cls):
+    def test_external_expert_illegal_move_is_rejected(self, client_cls, _cache):
         client_cls.return_value.get_move.return_value = "a1"
         with self.assertRaisesRegex(ValueError, "illegal move"):
             web.recommend_action(
@@ -295,6 +300,43 @@ class BarricadeTrainerTests(unittest.TestCase):
         payload = web.state_payload(state, "red", 0.05, 3, recommend_for_turn=True)
         self.assertEqual(payload["analysis"]["resolved_engine"], "alpha-beta")
         self.assertEqual(payload["recommendation"], "e5")
+
+    def test_expert_cache_hits_opening_without_api(self):
+        hit = lookup_expert_cache([])
+        self.assertIsNotNone(hit)
+        self.assertEqual(hit.action, "e2")
+        state = b.State()
+        action, _, _, resolved = web.recommend_action(
+            state,
+            search_time=0.05,
+            depth=3,
+            engine_kind="expert",
+            avoid_actions=set(),
+            history_tokens=[],
+            start_turn="red",
+        )
+        self.assertEqual(action, "e2")
+        self.assertEqual(resolved, "expert:opening-book")
+
+    def test_expert_cache_supports_blue_first_mirror(self):
+        state = b.State(turn="blue")
+        action, _, _, resolved = web.recommend_action(
+            state,
+            search_time=0.05,
+            depth=3,
+            engine_kind="expert",
+            avoid_actions=set(),
+            history_tokens=[],
+            start_turn="blue",
+        )
+        self.assertEqual(action, "e8")
+        self.assertEqual(resolved, "expert:opening-book")
+
+    def test_expert_state_key_matches_cache_format(self):
+        self.assertEqual(
+            expert_state_key(b.State()),
+            '{"blue":"e9","blue_walls":10,"red":"e1","red_walls":10,"turn":"red","walls":[]}',
+        )
 
     def test_barricade_gg_expert_red_avoids_next_wall_trap(self):
         history = "e2 e8 e3 e7 e4 e6 hd4 hf6 hf3 ha7 f4 hh6"

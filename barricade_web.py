@@ -9,12 +9,13 @@ from urllib.parse import unquote
 
 import barricade_trainer as engine
 import barricade_mcts
+from barricade_expert_cache import lookup_expert_cache
 from barricade_expert import BarricadeGgAiClient, expert_history_for_start_turn, local_action_from_expert
 
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
-APP_VERSION = "2026.06.30.10"
+APP_VERSION = "2026.06.30.11"
 DEFAULT_ENGINE = "hybrid"
 EXPERT_ENGINE = "expert"
 SUPPORTED_ENGINES = {"alpha-beta", "mcts", "hybrid", EXPERT_ENGINE}
@@ -176,7 +177,8 @@ def recommend_action(
     resolved_engine = resolve_hybrid_engine(state) if engine_kind == "hybrid" else engine_kind
     if resolved_engine == EXPERT_ENGINE:
         expert_history = expert_history_for_start_turn(history_tokens or [], start_turn)
-        expert_action = BarricadeGgAiClient(timeout=EXPERT_TIMEOUT_SECONDS).get_move(expert_history)
+        cache_hit = lookup_expert_cache(expert_history)
+        expert_action = cache_hit.action if cache_hit else BarricadeGgAiClient(timeout=EXPERT_TIMEOUT_SECONDS).get_move(expert_history)
         action = local_action_from_expert(expert_action, start_turn)
         try:
             engine.apply_action(state, action)
@@ -185,7 +187,8 @@ def recommend_action(
                 f"Barricade.gg Expert returned illegal move {expert_action} "
                 f"(local {action}): {exc}"
             ) from exc
-        return action, engine.action_score(state, action, state.turn), 0, resolved_engine
+        hit_suffix = f":{cache_hit.source}" if cache_hit else ""
+        return action, engine.action_score(state, action, state.turn), 0, f"{resolved_engine}{hit_suffix}"
     if resolved_engine == "mcts":
         action, score, searched_depth = barricade_mcts.search_mcts(
             state,

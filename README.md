@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.30.10
+## Current Status: 2026.06.30.11
 
 The production web/API backend still exposes a hybrid engine, but Hybrid now
 resolves to the stable alpha-beta policy by default. A 10-game Hybrid-vs-Expert
@@ -17,6 +17,14 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.30.11` adds a high-confidence Barricade.gg Expert cache and
+Expert self-play analysis workflow. Expert mode now checks an opening/state
+cache before calling the remote API, so repeated high-confidence openings such
+as `e2 e8 e3 e7 e4 e6` return instantly. Cache misses still call the official
+Expert API. The new `tools/barricade_external/analyze_expert_selfplay.py`
+script can rebuild enriched turn analytics, cache candidates, wall statistics,
+and opening summaries from Expert-vs-Expert self-play logs.
 
 Version `2026.06.30.10` retunes the backend after a 10-game Expert loss set.
 Hybrid now uses alpha-beta instead of MCTS routing, and the opening book avoids

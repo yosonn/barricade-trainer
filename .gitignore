@@ -9,3 +9,4 @@ env/
 backtest_runs/
 output/
 node_modules/
+tools/barricade_external/*_tmp.py

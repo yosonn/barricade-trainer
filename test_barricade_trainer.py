@@ -85,6 +85,22 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertEqual(best, "e6")
         self.assertEqual(depth, 0)
 
+    def test_opening_book_continues_expert_prefix_mainline(self):
+        cases = {
+            "e2 e8 e3 e7 e4 e6 he3": "hf6",
+            "e2 e8 e3 e7 e4 e6 he3 hf6": "hc3",
+            "e2 e8 e3 e7 e4 e6 he3 hf6 hc3": "vd4",
+            "e2 e8 e3 e7 e4 e6 he3 hf6 hc3 vd4": "ve5",
+            "e2 e8 e3 e7 e4 e6 he3 hf6 hc3 vd4 ve5": "hh6",
+            "e2 e8 e3 e7 e4 e6 he3 hf6 hc3 vd4 ve5 hh6": "e5",
+        }
+        for history, expected in cases.items():
+            with self.subTest(history=history):
+                state = b.state_from_history(history)
+                best, _, depth = b.search_best(state, time_limit=0.05, max_depth=3)
+                self.assertEqual(best, expected)
+                self.assertEqual(depth, 0)
+
     def test_path_flexibility_counts_useful_moves(self):
         open_state = b.State(red=b.text_to_coord("e5"), blue=b.text_to_coord("i9"), turn="red")
         boxed_state = b.State(
@@ -318,6 +334,12 @@ class BarricadeTrainerTests(unittest.TestCase):
         )
         self.assertEqual(action, "e2")
         self.assertEqual(resolved, "expert:opening-book")
+
+    def test_expert_cache_hits_prefix_continuation_without_api(self):
+        hit = lookup_expert_cache("e2 e8 e3 e7 e4 e6 he3 hf6 hc3 vd4 ve5".split())
+        self.assertIsNotNone(hit)
+        self.assertEqual(hit.action, "hh6")
+        self.assertEqual(hit.source, "opening-book")
 
     def test_expert_cache_supports_blue_first_mirror(self):
         state = b.State(turn="blue")

@@ -23,37 +23,50 @@ QUIESCENCE_EXTENSION_LIMIT = 1
 EXPERT_WALL_PRIORS = {
     "he3": 29,
     "hc3": 33,
-    "vd4": 29,
+    "vd4": 30,
+    "hh6": 36,
+    "ve5": 29,
     "ha3": 24,
     "hf6": 20,
-    "hh6": 16,
+    "hb6": 20,
+    "hd6": 20,
+    "vb2": 17,
+    "vd6": 16,
+    "hd5": 18,
     "he4": 14,
-    "ve5": 14,
     "hc6": 13,
+    "ha8": 13,
+    "vc5": 13,
+    "ha4": 12,
     "hh7": 12,
     "he6": 12,
     "hg3": 11,
     "hg4": 11,
     "hf1": 11,
     "hf7": 11,
-    "hd5": 10,
     "hf8": 10,
     "vf5": 10,
+    "hc8": 10,
+    "ha7": 10,
     "hd1": 9,
-    "vd6": 9,
+    "ve8": 9,
 }
 EXPERT_PREP_WALL_PRIORS = {
-    "vd4": 19,
+    "hh6": 33,
+    "vd4": 24,
+    "ve5": 24,
     "ha3": 17,
-    "hf6": 17,
     "hc3": 12,
-    "hh6": 11,
-    "ve5": 8,
+    "hf6": 8,
+    "vf5": 6,
     "hd5": 5,
     "va2": 5,
     "ha6": 5,
     "vd5": 5,
+    "vc4": 4,
+    "ve8": 4,
 }
+EXPERT_OPENING_SCAFFOLD = {"he3", "hf6", "hc3", "vd4", "ve5", "hh6"}
 
 Coord = tuple[int, int]
 Wall = tuple[str, int, int]
@@ -288,6 +301,17 @@ def legal_walls(state: State, focused: bool = True) -> list[Wall]:
                     for y in (ay - 1, ay):
                         if 0 <= x < BOARD - 1 and 0 <= y < BOARD - 1:
                             candidates.add(("v", x, y))
+        wall_texts = {wall_to_text(wall) for wall in state.walls}
+        expert_scaffold = len(wall_texts & EXPERT_OPENING_SCAFFOLD)
+        if len(state.walls) <= 10 and ("he3" in wall_texts or expert_scaffold >= 2):
+            # Expert self-play often uses zero-delay setup walls that are not
+            # adjacent to the current shortest paths. Keep those motifs visible
+            # only inside the learned opening scaffold so search stays compact.
+            for action in set(EXPERT_WALL_PRIORS) | set(EXPERT_PREP_WALL_PRIORS):
+                try:
+                    candidates.add(text_to_wall(action))
+                except ValueError:
+                    pass
         slots = candidates
     return [wall for wall in slots if can_place_wall(state, wall)]
 
@@ -569,15 +593,19 @@ def expert_wall_prior_adjustment(state: State, action: str, perspective: str) ->
     opp_delay = new_opp_dist - opp_dist
     early_wall_phase = len(state.walls) <= 10 and state.walls_left(perspective) >= 4
     close_or_tactical = abs(my_dist - opp_dist) <= 3 or min(my_dist, opp_dist) <= 5
+    wall_texts = {wall_to_text(wall) for wall in state.walls}
+    expert_scaffold = len(wall_texts & EXPERT_OPENING_SCAFFOLD)
 
     if not early_wall_phase and not close_or_tactical:
         return 0.0
+    if opp_delay <= 0 and prep_prior and "he3" not in wall_texts and expert_scaffold < 2:
+        return 0.0
 
-    score = prior * 6 + prep_prior * 9
+    score = prior * 8 + prep_prior * 14
     if opp_delay > 0:
         score += opp_delay * 85
     elif prep_prior:
-        score += 80
+        score += 220
     else:
         score -= 60
 
@@ -756,7 +784,7 @@ def opening_book_action(state: State) -> str | None:
         and state.blue == text_to_coord("e6")
         and state.red_walls >= 9
         and state.blue_walls >= 9
-        and len(state.walls) <= 2
+        and not state.walls
     ):
         return "he3"
     if (
@@ -768,6 +796,15 @@ def opening_book_action(state: State) -> str | None:
         and state.walls == frozenset({text_to_wall("he3")})
     ):
         return "hf6"
+    if (
+        state.turn == "red"
+        and state.red == text_to_coord("e4")
+        and state.blue == text_to_coord("e6")
+        and state.red_walls == 9
+        and state.blue_walls == 9
+        and state.walls == frozenset({text_to_wall("he2"), text_to_wall("hf6")})
+    ):
+        return "he3"
     if (
         state.turn == "red"
         and state.red == text_to_coord("e4")
@@ -786,6 +823,51 @@ def opening_book_action(state: State) -> str | None:
         and state.walls == frozenset({text_to_wall("he3"), text_to_wall("hf6"), text_to_wall("hc3")})
     ):
         return "vd4"
+    if (
+        state.turn == "red"
+        and state.red == text_to_coord("e4")
+        and state.blue == text_to_coord("e6")
+        and state.red_walls == 8
+        and state.blue_walls == 8
+        and state.walls == frozenset({
+            text_to_wall("he3"),
+            text_to_wall("hf6"),
+            text_to_wall("hc3"),
+            text_to_wall("vd4"),
+        })
+    ):
+        return "ve5"
+    if (
+        state.turn == "blue"
+        and state.red == text_to_coord("e4")
+        and state.blue == text_to_coord("e6")
+        and state.red_walls == 7
+        and state.blue_walls == 8
+        and state.walls == frozenset({
+            text_to_wall("he3"),
+            text_to_wall("hf6"),
+            text_to_wall("hc3"),
+            text_to_wall("vd4"),
+            text_to_wall("ve5"),
+        })
+    ):
+        return "hh6"
+    if (
+        state.turn == "red"
+        and state.red == text_to_coord("e4")
+        and state.blue == text_to_coord("e6")
+        and state.red_walls == 7
+        and state.blue_walls == 7
+        and state.walls == frozenset({
+            text_to_wall("he3"),
+            text_to_wall("hf6"),
+            text_to_wall("hc3"),
+            text_to_wall("vd4"),
+            text_to_wall("ve5"),
+            text_to_wall("hh6"),
+        })
+    ):
+        return "e5"
     if (
         state.turn == "blue"
         and state.red == text_to_coord("e3")

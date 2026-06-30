@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.06.30.12
+## Current Status: 2026.06.30.13
 
 The production web/API backend still exposes a hybrid engine, but Hybrid now
 resolves to the stable alpha-beta policy by default. A 10-game Hybrid-vs-Expert
@@ -17,6 +17,15 @@ New backtest options:
 - `--candidate-engine alpha-beta|mcts`
 - `--baseline-simulations`
 - `--candidate-simulations`
+
+Version `2026.06.30.13` integrates the new 40-game Expert opening-prefix
+dataset. The local Expert cache now covers the stronger continuation
+`he3/hf6/hc3/vd4/ve5/hh6/e5/hd5/vd6`, reducing repeated Barricade.gg Expert
+API calls in those states. Hybrid also keeps learned Expert setup walls visible
+inside the `he3/hf6/hc3/vd4/ve5/hh6` opening scaffold, so zero-delay prep walls
+such as `vd4`, `ve5`, and `hh6` are no longer filtered out before search. The
+guard is intentionally scoped to the learned scaffold to avoid polluting older
+opening-tempo fixes.
 
 Version `2026.06.30.12` adds a repeatable local collection script for 20
 Barricade.gg Expert-vs-Expert games: run `run_expert_selfplay_20.cmd` from the

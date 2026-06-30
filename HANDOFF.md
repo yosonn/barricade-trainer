@@ -699,6 +699,37 @@ Verification:
 - Python unit tests, compile checks, frontend JS syntax checks, analysis CLI
   smoke, and local HTTP `/api/analyze` Expert cache smoke passed.
 
+## 2026.06.30.13 Expert Prefix Cache and Scaffold Wall-Prior Segment
+
+Changes:
+- Analyzed four new 10-game Expert opening-prefix batches plus the previous 40
+  complete Expert self-play games.
+- Wrote the offline analysis artifacts to
+  `backtest_runs/expert-prefix-analysis-20260630/`.
+- Expanded `barricade_expert_cache.py` with high-confidence prefix
+  continuations through `he3/hf6/hc3/vd4/ve5/hh6/e5/hd5/vd6`.
+- Updated Hybrid's Expert wall priors from the prefix data, especially
+  zero-delay setup walls `vd4`, `ve5`, and `hh6`.
+- Added Expert scaffold wall generation so learned setup walls are not removed
+  by focused-wall filtering before search.
+- Scoped the scaffold generation/prior boost to the learned
+  `he3/hf6/hc3/vd4/ve5/hh6` opening skeleton to avoid damaging older
+  opening-tempo fixes.
+- Extended the local opening book for the main Expert prefix continuation and
+  preserved the previous `he2/hf6 -> he3` trap guard.
+- Bumped app/cache version to `2026.06.30.13`.
+
+Verification:
+- `python -m py_compile barricade_trainer.py barricade_expert_cache.py
+  barricade_web.py` passed.
+- `python -m unittest test_barricade_trainer.py` passed: 62 tests.
+- CLI smoke confirmed `e2 e8 e3 e7 e4 e6 he3 hf6 hc3 vd4` recommends `ve5`.
+- CLI smoke confirmed the older `he2/hf6` trap still recommends `he3`.
+- Cache smoke confirmed prefix continuations hit `vd4`, `hh6`, and `hd5`
+  without API calls.
+- A 4-game local tournament smoke was attempted, but it exceeded the 120s
+  interactive timeout after one reported game; no long Expert API run was made.
+
 ## 2026.06.30.12 Expert Self-Play Collector and Wall-Prior Segment
 
 Changes:

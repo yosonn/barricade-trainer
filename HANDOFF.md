@@ -699,6 +699,15 @@ Verification:
 - Python unit tests, compile checks, frontend JS syntax checks, analysis CLI
   smoke, and local HTTP `/api/analyze` Expert cache smoke passed.
 
+## 2026.07.11.04 Dense Board Readability Segment
+
+- Enlarged the short-screen desktop board by reclaiming header and dashboard
+  height while keeping the left workspace inside one viewport.
+- Reduced wall thickness and label size, and moved labels farther from anchors.
+- Increased pawn size and layer priority so wall labels cannot cover pawns.
+- Applied the same board proportions to AI battle and trainer pages.
+- Bumped app/cache version to `2026.07.11.04`.
+
 ## 2026.07.11.03 Unified Responsive Workspace Segment
 
 - The desktop board pane now fits its header, dashboard, board, rails, and

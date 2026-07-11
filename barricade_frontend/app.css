@@ -316,12 +316,12 @@ small,
 
 .pawn {
   position: absolute;
-  z-index: 5;
-  width: calc(100% / 9 * 0.5);
+  z-index: 12;
+  width: calc(100% / 9 * 0.58);
   aspect-ratio: 1 / 1;
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  border: 3px solid rgba(255, 255, 255, 0.92);
+  border: 2px solid rgba(255, 255, 255, 0.96);
   box-shadow: 0 5px 12px rgba(0, 0, 0, 0.34);
 }
 
@@ -344,8 +344,8 @@ small,
 
 .move-arrow {
   position: absolute;
-  z-index: 9;
-  height: 6px;
+  z-index: 13;
+  height: 5px;
   transform-origin: left center;
   border-radius: 999px;
   background: #f5d06b;
@@ -385,19 +385,19 @@ small,
 .wall {
   position: absolute;
   z-index: 7;
-  border-radius: 5px;
+  border-radius: 4px;
   background: #101316;
-  border: 2px solid #ffffff;
+  border: 1px solid #ffffff;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.42);
 }
 
 .wall.h {
-  height: 16px;
+  height: 11px;
   transform: translateY(-50%);
 }
 
 .wall.v {
-  width: 16px;
+  width: 11px;
   transform: translateX(-50%);
 }
 
@@ -429,7 +429,7 @@ small,
 .recommendation-label {
   background: #f1c969;
   color: #11161a;
-  min-width: 66px;
+  min-width: 48px;
 }
 
 .recommendation-label {
@@ -440,7 +440,7 @@ small,
 
 .computer-last-label {
   z-index: 11;
-  min-width: 70px;
+  min-width: 48px;
   background: #20d6a3;
   color: #08110e;
 }
@@ -448,12 +448,12 @@ small,
 .wall-label {
   position: absolute;
   z-index: 8;
-  min-width: 34px;
-  padding: 2px 5px;
-  border-radius: 5px;
+  min-width: 28px;
+  padding: 1px 4px;
+  border-radius: 4px;
   background: #f8fafb;
   color: #11161a;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1.1;
   text-align: center;
@@ -799,7 +799,7 @@ details .button-row,
 .ai-page .ai-mode-picker .seg {
   min-width: 112px;
   border: 0;
-  font-size: 13px;
+  font-size: 10px;
 }
 
 .ai-page .seg.active {
@@ -1521,16 +1521,24 @@ details .button-row,
   }
 
   .ai-page .command-header {
-    min-height: 58px;
-    padding-bottom: 8px;
+    min-height: 48px;
+    padding-bottom: 6px;
   }
 
   .ai-page h1 {
-    font-size: 25px;
+    font-size: 22px;
   }
 
   .ai-page .brand-kicker {
-    font-size: 9px;
+    display: none;
+  }
+
+  .ai-page .brand-block {
+    gap: 1px;
+  }
+
+  .ai-page .brand-meta {
+    margin-top: 1px;
   }
 
   .ai-page .match-dashboard {
@@ -1539,15 +1547,24 @@ details .button-row,
 
   .ai-page .player-card,
   .ai-page .decision-card {
-    min-height: 94px;
+    height: 102px;
+    min-height: 0;
   }
 
   .ai-page .player-card strong {
-    font-size: 34px;
+    font-size: 32px;
   }
 
   .ai-page .decision-card > strong {
-    font-size: 42px;
+    font-size: 38px;
+  }
+
+  .ai-page .decision-card #scoreText {
+    display: none;
+  }
+
+  .ai-page .decision-meta {
+    margin-block: 1px;
   }
 
   .ai-page .board-shell {
@@ -1555,7 +1572,7 @@ details .button-row,
   }
 
   .ai-page .board-rail {
-    height: min(92%, 300px);
+    height: min(92%, 280px);
     padding: 11px;
   }
 
@@ -1571,6 +1588,10 @@ details .button-row,
   .ai-page .box,
   .ai-page .settings-drawer {
     padding: 11px;
+  }
+
+  .ai-page .board-frame {
+    width: min(100%, calc(100dvh - 275px), 660px);
   }
 }
 

@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.07.12.01
+## Current Status: 2026.07.12.02
 
 The production web/API backend still exposes a hybrid engine, but Hybrid now
 resolves to the stable alpha-beta policy by default. A 10-game Hybrid-vs-Expert
@@ -10,6 +10,15 @@ available as an explicit experimental model. The API and frontend support
 explicit model selection through
 `engine: "hybrid"`, `engine: "mcts"`, `engine: "alpha-beta"`, or
 `engine: "expert"`.
+
+Version `2026.07.12.02` turns the Trainer into a local red-vs-blue match:
+normal moves only validate and synchronize game rules, while AI is invoked once
+only when a player presses the hint button. Live Assistance always keeps red as
+the first mover; a player-first assisted game rotates the board to show red on
+top, while a computer-first game keeps blue on top. Touch wall previews are
+offset above the finger, and the phone command layout keeps the mode bar, both
+player cards, decision status, full board, wall tools, live status, and essential
+controls inside one viewport. Desktop layout and AI battle features are retained.
 
 Version `2026.07.12.01` keeps the trainer board visible even when analysis is
 slow or unavailable, reduces fast state-sync work after each move, and replaces

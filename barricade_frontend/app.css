@@ -1078,6 +1078,10 @@ details .button-row,
   gap: 6px;
 }
 
+.board-legend em {
+  font-style: normal;
+}
+
 .legend-dot {
   width: 6px;
   height: 6px;
@@ -1642,4 +1646,473 @@ details .button-row,
 
 .trainer-page .help-drawer .code-grid {
   margin-top: 13px;
+}
+
+.trainer-mode-label {
+  display: grid;
+  place-items: center;
+}
+
+/* Phone command view: keep the live match essentials inside one viewport. */
+@media (max-width: 680px) {
+  .ai-page {
+    overflow: hidden;
+  }
+
+  .ai-page .ai-app {
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 4px;
+    padding: 4px;
+    overflow: hidden;
+  }
+
+  .ai-page .board-area {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    padding: 5px;
+    overflow: hidden;
+    border-radius: 12px;
+  }
+
+  .ai-page .command-header {
+    min-height: 0;
+    gap: 4px;
+    padding-bottom: 4px;
+  }
+
+  .ai-page .brand-block {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .ai-page .brand-kicker,
+  .ai-page .top-link {
+    display: none;
+  }
+
+  .ai-page h1 {
+    flex: 1;
+    font-size: 17px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .ai-page .brand-meta {
+    margin: 0;
+  }
+
+  .ai-page .app-version {
+    padding: 2px 5px;
+    font-size: 8px;
+  }
+
+  .ai-page .ai-mode-picker {
+    height: 32px;
+    padding: 2px;
+    overflow: hidden;
+  }
+
+  .ai-page .ai-mode-picker .seg {
+    min-width: 0;
+    min-height: 26px;
+    padding: 3px 5px;
+    font-size: 9px;
+  }
+
+  .match-dashboard {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.25fr) minmax(0, 0.8fr);
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  .decision-card {
+    grid-column: auto;
+    grid-row: auto;
+    min-height: 0;
+    height: 76px;
+    gap: 0;
+    padding: 17px 3px 3px;
+    border-radius: 10px;
+  }
+
+  .decision-card::after {
+    display: none;
+  }
+
+  .decision-topline {
+    top: 3px;
+    left: 4px;
+    right: 4px;
+    gap: 3px;
+    font-size: 8px;
+  }
+
+  .sync-badge {
+    padding: 2px 4px;
+    font-size: 7px;
+  }
+
+  .move-caption {
+    display: none;
+  }
+
+  .decision-card > strong {
+    margin-top: 2px;
+    font-size: 27px;
+  }
+
+  .decision-meta {
+    max-width: 100%;
+    margin: 1px 0;
+  }
+
+  .decision-meta span {
+    max-width: 100%;
+    padding: 1px 4px;
+    overflow: hidden;
+    font-size: 7px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .decision-meta #latencyText,
+  .decision-card #scoreText {
+    display: none;
+  }
+
+  .decision-card small {
+    font-size: 7px;
+    white-space: nowrap;
+  }
+
+  .ai-page .player-card {
+    min-height: 0;
+    height: 76px;
+    gap: 1px;
+    padding: 6px;
+    border-radius: 10px;
+  }
+
+  .player-label {
+    gap: 3px;
+    font-size: 8px;
+  }
+
+  .side-dot {
+    width: 5px;
+    height: 5px;
+    box-shadow: 0 0 0 2px currentColor;
+  }
+
+  .ai-page .player-card strong {
+    font-size: 26px;
+    line-height: 1;
+  }
+
+  .ai-page .player-card b,
+  .ai-page .player-card small {
+    font-size: 8px;
+    white-space: nowrap;
+  }
+
+  .ai-page .board-shell {
+    height: 100%;
+    min-height: 0;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) 48px;
+    gap: 3px;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+
+  .ai-page .board-stage {
+    order: 1;
+    height: 100%;
+    min-height: 0;
+    align-content: center;
+    gap: 2px;
+  }
+
+  .ai-page .board-frame {
+    width: min(100%, calc(100dvh - 320px));
+    max-width: 100%;
+    padding: 3px;
+    border-radius: 11px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.28);
+  }
+
+  .ai-page .board {
+    border-radius: 8px;
+  }
+
+  .board-legend {
+    min-height: 11px;
+    gap: 2px 9px;
+    font-size: 7px;
+    line-height: 1;
+  }
+
+  .board-legend span {
+    gap: 3px;
+  }
+
+  .legend-dot {
+    width: 4px;
+    height: 4px;
+  }
+
+  .legend-line {
+    width: 11px;
+    height: 2px;
+  }
+
+  .ai-page .wall-palette {
+    order: 2;
+    min-height: 0;
+    height: 48px;
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+
+  .wall-palette .rail-eyebrow,
+  .wall-palette h2,
+  .wall-palette p {
+    display: none;
+  }
+
+  .wall-tool-row {
+    min-height: 42px;
+    margin: 0;
+    gap: clamp(58px, 22vw, 90px);
+    justify-content: center;
+  }
+
+  .h-drag::before {
+    width: 72px;
+    height: 10px;
+  }
+
+  .v-drag::before {
+    width: 10px;
+    height: 38px;
+  }
+
+  .drag-wall span {
+    font-size: 7px;
+  }
+
+  .h-drag span {
+    top: calc(50% + 10px);
+  }
+
+  .v-drag span {
+    left: calc(50% + 10px);
+  }
+
+  .turn-guide,
+  .recommendation-rail {
+    display: none;
+  }
+
+  .ai-page .control-panel {
+    position: static;
+    width: 100%;
+    min-width: 0;
+    max-height: none;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 34px auto;
+    gap: 3px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .ai-page .status-card {
+    min-height: 34px;
+    height: 34px;
+    grid-template-columns: 6px 1fr;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: 9px;
+  }
+
+  .status-card small {
+    display: none;
+  }
+
+  .status-pulse {
+    width: 6px;
+    height: 6px;
+    box-shadow: 0 0 0 3px rgba(45, 212, 173, 0.12);
+  }
+
+  .ai-page .status {
+    overflow: hidden;
+    font-size: 9px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ai-page .action-box {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3px;
+    padding: 4px;
+    border-radius: 9px;
+  }
+
+  .ai-page .action-box .section-heading,
+  .ai-page .action-box .flow-copy,
+  .ai-page .action-field > span {
+    display: none;
+  }
+
+  .ai-page .first-picker {
+    grid-column: 1 / -1;
+    min-height: 25px;
+    display: flex;
+    padding: 1px;
+    border-radius: 8px;
+  }
+
+  .ai-page .first-picker button {
+    min-height: 23px;
+    padding: 2px;
+    font-size: 8px;
+  }
+
+  .ai-page .action-field {
+    grid-column: 1;
+  }
+
+  .ai-page .action-field input,
+  .ai-page .command-button,
+  .ai-page .quick-actions button {
+    min-height: 30px;
+    height: 30px;
+    padding: 3px 4px;
+    font-size: 8px;
+  }
+
+  .ai-page .quick-actions {
+    grid-column: 1 / -1;
+    gap: 3px;
+  }
+
+  .ai-page .replay-box,
+  .ai-page .help-drawer {
+    display: none;
+  }
+
+  .ai-page .settings-drawer:not(.help-drawer) {
+    position: fixed;
+    z-index: 80;
+    top: 5px;
+    right: 7px;
+    display: block;
+    width: 38px;
+    height: 22px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(8, 17, 21, 0.94);
+    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.3);
+  }
+
+  .ai-page .settings-drawer:not(.help-drawer) > summary {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+    cursor: pointer;
+  }
+
+  .ai-page .settings-drawer:not(.help-drawer) > summary > span {
+    display: block;
+    font-size: 0;
+  }
+
+  .ai-page .settings-drawer:not(.help-drawer) > summary > span::before {
+    content: "設定";
+    color: var(--teal);
+    font-size: 8px;
+    font-weight: 900;
+  }
+
+  .ai-page .settings-drawer:not(.help-drawer) > summary > span::after,
+  .ai-page .settings-drawer:not(.help-drawer) > summary b,
+  .ai-page .settings-drawer:not(.help-drawer) > summary small {
+    display: none;
+  }
+
+  .ai-page .settings-drawer:not(.help-drawer)[open] {
+    inset: 4px;
+    width: auto;
+    height: auto;
+    padding: 10px;
+    overflow: auto;
+    border-radius: 12px;
+    background: linear-gradient(145deg, #122126, #081115);
+  }
+
+  .ai-page .settings-drawer:not(.help-drawer)[open] > summary {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+    height: 34px;
+    place-items: stretch;
+    padding: 7px 9px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #122126;
+  }
+
+  .ai-page .settings-drawer:not(.help-drawer)[open] > summary > span {
+    display: grid;
+    font-size: 12px;
+  }
+
+  .ai-page .settings-drawer:not(.help-drawer)[open] > summary > span::before {
+    content: "關閉設定";
+    font-size: 10px;
+  }
+
+  .ai-page .settings-drawer:not(.help-drawer)[open] .settings-content {
+    display: grid;
+  }
+
+  .trainer-page .trainer-mode-label {
+    min-width: 0;
+  }
+
+  .trainer-page .action-field {
+    grid-column: 1 / 3;
+  }
+
+  .trainer-page #nextBtn {
+    grid-column: 3;
+  }
+
+  .trainer-page #editMineBtn {
+    grid-column: 1 / 3;
+  }
+
+  .trainer-page #undoBtn {
+    grid-column: 3;
+  }
 }

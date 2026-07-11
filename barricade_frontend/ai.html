@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Barricade AI 對戰</title>
-    <link rel="stylesheet" href="/app.css?v=2026.07.12.01">
+    <link rel="stylesheet" href="/app.css?v=2026.07.12.02">
   </head>
   <body class="ai-page">
     <main class="app ai-app">
@@ -14,13 +14,13 @@
             <div class="brand-kicker">TACTICAL RACE LAB</div>
             <h1>Barricade AI 對戰</h1>
             <div class="brand-meta">
-              <span class="app-version">2026.07.12.01</span>
+              <span class="app-version">2026.07.12.02</span>
               <a class="top-link" href="/">回到訓練器</a>
             </div>
           </div>
           <div class="side-picker ai-mode-picker" role="group" aria-label="選擇模式">
             <button class="seg active" id="modeHuman" type="button">玩家對電腦</button>
-            <button class="seg" id="modeTopHuman" type="button">上方玩家 · 藍方</button>
+            <button class="seg" id="modeTopHuman" type="button">實戰協助</button>
             <button class="seg" id="modeAuto" type="button">雙電腦互玩</button>
           </div>
         </header>
@@ -72,8 +72,8 @@
               <div class="board" id="board" aria-label="棋盤"></div>
             </div>
             <div class="board-legend">
-              <span><i class="legend-dot red"></i>紅方往上</span>
-              <span><i class="legend-dot blue"></i>藍方往下</span>
+              <span><i class="legend-dot red"></i><em id="redDirectionText">紅方往上</em></span>
+              <span><i class="legend-dot blue"></i><em id="blueDirectionText">藍方往下</em></span>
               <span><i class="legend-line"></i>上一步路徑</span>
             </div>
           </div>
@@ -196,6 +196,6 @@
         </details>
       </aside>
     </main>
-    <script src="/ai.js?v=2026.07.12.01"></script>
+    <script src="/ai.js?v=2026.07.12.02"></script>
   </body>
 </html>

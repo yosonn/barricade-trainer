@@ -37,6 +37,8 @@ const syncBadge = document.querySelector("#syncBadge");
 const activeModelLabel = document.querySelector("#activeModelLabel");
 const panelModelLabel = document.querySelector("#panelModelLabel");
 const latencyText = document.querySelector("#latencyText");
+const redDirectionText = document.querySelector("#redDirectionText");
+const blueDirectionText = document.querySelector("#blueDirectionText");
 
 let mode = "human";
 let humanSide = "red";
@@ -90,7 +92,7 @@ function other(side) {
 }
 
 function shouldFlipBoard() {
-  return false;
+  return mode === "topHuman" && humanSide === "red";
 }
 
 function coordToXY(coord) {
@@ -102,11 +104,13 @@ function xyToCoord(x, y) {
 }
 
 function visualXY(x, y) {
-  return { x, y };
+  return shouldFlipBoard() ? { x: 8 - x, y: 8 - y } : { x, y };
 }
 
 function boardXYFromDisplayCell(col, displayRow) {
-  return { x: col, y: 8 - displayRow };
+  return shouldFlipBoard()
+    ? { x: 8 - col, y: displayRow }
+    : { x: col, y: 8 - displayRow };
 }
 
 function centerPercent(coord) {
@@ -197,13 +201,12 @@ function wallLimitMessage(actions) {
 }
 
 function currentStartTurn() {
-  if (mode === "topHuman") return firstMover === "player" ? "blue" : "red";
   return "red";
 }
 
 function syncSidesForMode() {
   if (mode === "topHuman") {
-    humanSide = "blue";
+    humanSide = firstMover === "player" ? "red" : "blue";
     return;
   }
   if (mode === "auto") {
@@ -445,7 +448,11 @@ function hasHumanPlayer() {
 
 function updateModeText(state, humanTurn) {
   const firstLabel = firstMover === "player" ? "\u73a9\u5bb6\u5148\u624b" : "\u96fb\u8166\u5148\u624b";
-  if (mode === "topHuman") modeHint.textContent = `\u4f60\u63a7\u5236\u4e0a\u65b9\u85cd\u65b9\uff0c\u96fb\u8166\u63a7\u5236\u4e0b\u65b9\u7d05\u65b9\u3002${firstLabel}\u3002`;
+  if (mode === "topHuman") {
+    const topSide = humanSide === "red" ? "\u7d05\u65b9" : "\u85cd\u65b9";
+    const bottomSide = humanSide === "red" ? "\u85cd\u65b9" : "\u7d05\u65b9";
+    modeHint.textContent = `\u5be6\u6230\u5354\u52a9\uff1a\u4f60\u63a7\u5236\u4e0a\u65b9${topSide}\uff0c\u96fb\u8166\u63a7\u5236\u4e0b\u65b9${bottomSide}\u3002${firstLabel}\uff0c\u7d05\u65b9\u56fa\u5b9a\u5148\u624b\u3002`;
+  }
   else if (mode === "human") {
     const playerSide = humanSide === "red" ? "\u7d05\u65b9" : "\u85cd\u65b9";
     modeHint.textContent = `\u73a9\u5bb6\u5c0d\u96fb\u8166\u3002${firstLabel}\uff0c\u73a9\u5bb6\u70ba${playerSide}\u3002`;
@@ -460,6 +467,8 @@ function updateModeText(state, humanTurn) {
 }
 
 function drawBoard(state) {
+  redDirectionText.textContent = shouldFlipBoard() ? "\u7d05\u65b9\u5f80\u4e0b" : "\u7d05\u65b9\u5f80\u4e0a";
+  blueDirectionText.textContent = shouldFlipBoard() ? "\u85cd\u65b9\u5f80\u4e0a" : "\u85cd\u65b9\u5f80\u4e0b";
   boardEl.innerHTML = "";
   for (let displayRow = 0; displayRow < 9; displayRow += 1) {
     for (let col = 0; col < 9; col += 1) {
@@ -518,7 +527,10 @@ function drawPawn(coord, color) {
 }
 
 function transformedWall(code) {
-  return code;
+  if (!shouldFlipBoard()) return code;
+  const orient = code[0];
+  const { x, y } = coordToXY(code.slice(1));
+  return `${orient}${xyToCoord(7 - x, 7 - y)}`;
 }
 
 function drawWall(code, preview = false, extraClass = "") {
@@ -568,14 +580,21 @@ function clamp(value, min, max) {
 }
 
 function visualWallToActual(code) {
-  return code;
+  if (!shouldFlipBoard()) return code;
+  const orient = code[0];
+  const { x, y } = coordToXY(code.slice(1));
+  return `${orient}${xyToCoord(7 - x, 7 - y)}`;
 }
 
-function wallFromPointer(event, orient) {
+function touchPreviewOffset() {
+  return Math.max(52, Math.min(84, boardEl.getBoundingClientRect().width / 6.5));
+}
+
+function wallFromPointer(event, orient, offsetForTouch = false) {
   const rect = boardEl.getBoundingClientRect();
   const cell = rect.width / 9;
   const relX = event.clientX - rect.left;
-  const relY = event.clientY - rect.top;
+  const relY = event.clientY - rect.top - (offsetForTouch ? touchPreviewOffset() : 0);
   if (relX < 0 || relY < 0 || relX > rect.width || relY > rect.height) return "";
   let visualCode;
   if (orient === "h") {
@@ -807,7 +826,7 @@ function beginTouchWallDrag(event, orient) {
 function updateTouchWallDrag(event) {
   if (!touchWallOrient) return;
   event.preventDefault();
-  const nextPreview = wallFromPointer(event, touchWallOrient);
+  const nextPreview = wallFromPointer(event, touchWallOrient, true);
   boardEl.classList.toggle("drag-over", Boolean(nextPreview));
   if (nextPreview !== previewWall) {
     previewWall = nextPreview;
@@ -818,7 +837,7 @@ function updateTouchWallDrag(event) {
 function finishTouchWallDrag(event) {
   if (!touchWallOrient) return;
   event.preventDefault();
-  const wall = previewWall || wallFromPointer(event, touchWallOrient);
+  const wall = previewWall || wallFromPointer(event, touchWallOrient, true);
   touchWallOrient = "";
   previewWall = "";
   lastWallTouchAt = Date.now();

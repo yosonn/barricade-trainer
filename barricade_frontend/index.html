@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Barricade 訓練器</title>
-    <link rel="stylesheet" href="/app.css?v=2026.07.12.01">
+    <link rel="stylesheet" href="/app.css?v=2026.07.12.02">
   </head>
   <body class="ai-page trainer-page">
     <main class="app ai-app trainer-app">
@@ -14,13 +14,13 @@
             <div class="brand-kicker">TACTICAL RACE LAB</div>
             <h1>Barricade 訓練器</h1>
             <div class="brand-meta">
-              <span class="app-version">2026.07.12.01</span>
+              <span class="app-version">2026.07.12.02</span>
               <a class="top-link" href="/ai.html">開啟 AI 對戰</a>
             </div>
           </div>
-          <div class="side-picker ai-mode-picker trainer-side-picker" role="group" aria-label="選擇我的方位">
-            <button class="seg active" id="sideRed" type="button">我先手 · 紅方</button>
-            <button class="seg" id="sideBlue" type="button">我後手 · 藍方</button>
+          <div class="side-picker ai-mode-picker trainer-side-picker" role="group" aria-label="雙人對戰控制">
+            <span class="seg active trainer-mode-label">本機雙人對戰</span>
+            <button class="seg" id="resetTopBtn" type="button">重新開局</button>
           </div>
         </header>
 
@@ -37,14 +37,14 @@
               <span id="turnText">輪到紅方</span>
               <span class="sync-badge" id="syncBadge" data-state="busy">分析中</span>
             </div>
-            <div class="move-caption">推薦走法</div>
+            <div class="move-caption">AI 單次提示</div>
             <strong id="recommendation">-</strong>
             <div class="decision-meta">
               <span id="activeModelLabel">Hybrid · Alpha-Beta</span>
               <span id="latencyText">等待局面</span>
             </div>
-            <small id="scoreText">等待分析</small>
-            <small id="winRateText">勝率估計 · -</small>
+            <small id="scoreText">尚未要求提示</small>
+            <small id="winRateText">局面同步中</small>
           </article>
 
           <article class="stat player-card blue-card">
@@ -73,17 +73,18 @@
             <div class="board-legend">
               <span><i class="legend-dot red"></i>紅方往上</span>
               <span><i class="legend-dot blue"></i>藍方往下</span>
-              <span><i class="legend-line"></i>推薦預覽</span>
+              <span><i class="legend-line"></i>提示預覽</span>
             </div>
           </div>
 
           <section class="board-rail recommendation-rail">
-            <div class="rail-eyebrow">RECOMMENDATION</div>
-            <h2>推薦操作</h2>
-            <p id="boardRecHint">分析完成後，推薦走法會直接顯示在棋盤上。</p>
+            <div class="rail-eyebrow">OPTIONAL HINT</div>
+            <h2>AI 提示</h2>
+            <p id="boardRecHint">需要協助時再要求一次提示，不會自動替玩家走棋。</p>
+            <button class="ai-command rail-primary" id="boardHintBtn" type="button">提示這一步</button>
             <strong class="rail-code" id="boardRecCode">-</strong>
-            <button class="primary rail-primary" id="boardAcceptBtn" type="button">採用推薦</button>
-            <p>若實戰走法不同，可在右側輸入實際走法繼續分析。</p>
+            <button class="primary rail-primary" id="boardAcceptBtn" type="button">採用提示</button>
+            <p>提示只供參考，也能直接點棋盤、拖牆或輸入其他走法。</p>
           </section>
         </div>
       </section>
@@ -100,18 +101,18 @@
         <section class="box action-box">
           <div class="section-heading">
             <div>
-              <span class="section-kicker">TRAINING FLOW</span>
+              <span class="section-kicker">LOCAL MATCH</span>
               <h2>本回合操作</h2>
             </div>
             <span class="model-pill" id="panelModelLabel">Hybrid · Alpha-Beta</span>
           </div>
-          <p class="flow-copy" id="flowHint">先採用推薦，再輸入對手走法。</p>
+          <p class="flow-copy" id="flowHint">紅藍雙方輪流操作，AI 不會自動參與。</p>
           <label class="field action-field">
-            <span id="actionLabel">走法代碼</span>
-            <input id="actionInput" autocomplete="off" inputmode="text" placeholder="例如 e8、hd5、ve4">
+            <span id="actionLabel">本回合走法</span>
+            <input id="actionInput" autocomplete="off" inputmode="text" placeholder="例如 e2、hd5、ve4">
           </label>
-          <button class="primary command-button" id="nextBtn" type="button">採用推薦</button>
-          <button class="command-button" id="editMineBtn" type="button">我不是走推薦</button>
+          <button class="primary command-button" id="nextBtn" type="button">送出走法</button>
+          <button class="ai-command command-button" id="editMineBtn" type="button">AI 提示一次</button>
           <button id="undoBtn" type="button">上一步</button>
         </section>
 
@@ -125,19 +126,19 @@
               <textarea id="history" spellcheck="false" placeholder="貼上或修正棋譜，例如 1. e2 e8 2. e3 e7 3. hd5"></textarea>
             </label>
             <div class="button-row">
-              <button id="analyzeBtn" type="button">重新分析</button>
+              <button id="analyzeBtn" type="button">同步棋譜</button>
               <button id="resetBtn" type="button">重開</button>
             </div>
             <div class="settings-help">
-              <p><b>搜尋秒數</b>控制本地 AI 思考時間；越高通常越強但越慢。</p>
-              <p><b>最大深度</b>控制本地模型往後預判的層數。</p>
+              <p><b>搜尋秒數</b>只影響按下 AI 提示後的思考時間。</p>
+              <p><b>最大深度</b>只影響單次提示的預判層數。</p>
             </div>
             <div class="settings">
               <label class="field"><span>搜尋秒數</span><input id="timeLimit" type="number" min="0.05" max="3" step="0.05" value="0.5"></label>
               <label class="field"><span>最大深度</span><input id="depthLimit" type="number" min="1" max="5" step="1" value="3"></label>
             </div>
             <label class="field model-field">
-              <span>目前模型</span>
+              <span>提示模型</span>
               <select id="engineSelect">
                 <option value="hybrid" selected>Hybrid</option>
                 <option value="mcts">MCTS</option>
@@ -158,6 +159,6 @@
         </details>
       </aside>
     </main>
-    <script src="/app.js?v=2026.07.12.01"></script>
+    <script src="/app.js?v=2026.07.12.02"></script>
   </body>
 </html>

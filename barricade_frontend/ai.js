@@ -55,6 +55,18 @@ let autoBusy = false;
 let replayBusy = false;
 let analyzeRequestId = 0;
 
+const initialBoardState = {
+  turn: "red",
+  user_side: "red",
+  user_to_move: true,
+  red: { pos: "e1", walls: 10, dist: 8, path: [] },
+  blue: { pos: "e9", walls: 10, dist: 8, path: [] },
+  walls: [],
+  legal_actions: [],
+  recommendation: null,
+  winner: null,
+};
+
 const t = {
   red: "\u7d05\u65b9",
   blue: "\u85cd\u65b9",
@@ -210,7 +222,7 @@ async function fetchAnalysis(history, options = {}) {
   const controller = new AbortController();
   const timeoutMs = params.engine === "expert"
     ? 40000
-    : Math.max(8000, Number(params.time || 0) * 1000 + 5000);
+    : Math.max(15000, Number(params.time || 0) * 1000 + 8000);
   const timeoutId = window.setTimeout(() => controller.abort("timeout"), timeoutMs);
   let response;
   try {
@@ -828,6 +840,7 @@ document.querySelectorAll(".drag-wall").forEach((tool) => {
   tool.addEventListener("dragstart", (event) => {
     event.dataTransfer.setData("text/plain", tool.dataset.wall);
     event.dataTransfer.effectAllowed = "copy";
+    setWallDragImage(event, tool.dataset.wall);
   });
   tool.addEventListener("pointerdown", (event) => beginTouchWallDrag(event, tool.dataset.wall));
 });
@@ -879,6 +892,16 @@ historyEl.addEventListener("blur", () => {
     statusText.textContent = "棋譜已修改，按「重新分析」後套用新局面。";
   }
 });
+
+function setWallDragImage(event, orient) {
+  const ghost = document.createElement("div");
+  ghost.className = `wall-drag-image ${orient}`;
+  document.body.appendChild(ghost);
+  const width = orient === "h" ? 88 : 12;
+  const height = orient === "h" ? 12 : 76;
+  event.dataTransfer.setDragImage(ghost, width / 2, height / 2);
+  window.setTimeout(() => ghost.remove(), 0);
+}
 historyEl.addEventListener("input", () => {
   stopAuto();
   lastComputerAction = null;
@@ -887,4 +910,5 @@ historyEl.addEventListener("input", () => {
   statusText.textContent = "棋譜已修改，按「重新分析」後會從最新局面繼續。";
 });
 updateFirstButtons();
+drawBoard(initialBoardState);
 analyze();

@@ -251,19 +251,36 @@ small,
   font-size: 18px;
 }
 
+.wall-tool-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 14px;
+  min-height: 94px;
+  margin: 10px 0 8px;
+}
+
 .drag-wall {
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
-  display: grid;
-  place-items: center;
-  min-height: 46px;
-  border: 2px solid #f1c969;
-  border-radius: 8px;
-  background: #82641f;
-  color: #ffffff;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
   font-weight: 900;
   cursor: grab;
+}
+
+.drag-wall span {
+  position: absolute;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
 }
 
 .drag-wall:active {
@@ -274,20 +291,39 @@ small,
 .v-drag::before {
   content: "";
   display: block;
-  margin-bottom: 5px;
-  border-radius: 4px;
-  background: #ffffff;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  background: #101316;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 .h-drag::before {
-  width: 72px;
-  height: 8px;
+  width: 88px;
+  height: 12px;
 }
 
+.h-drag span { top: calc(50% + 13px); }
+
 .v-drag::before {
-  width: 8px;
-  height: 44px;
+  width: 12px;
+  height: 76px;
 }
+
+.v-drag span { left: calc(50% + 13px); }
+
+.wall-drag-image {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  border: 1px solid #fff;
+  border-radius: 999px;
+  background: #101316;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.55);
+}
+
+.wall-drag-image.h { width: 88px; height: 12px; }
+.wall-drag-image.v { width: 12px; height: 76px; }
 
 .cell {
   position: relative;
@@ -997,14 +1033,11 @@ details .button-row,
 }
 
 .ai-page .drag-wall {
-  min-height: 54px;
-  border: 1px solid rgba(244, 195, 91, 0.62);
-  border-radius: 12px;
-  background: linear-gradient(145deg, rgba(244, 195, 91, 0.22), rgba(126, 98, 37, 0.34));
+  min-height: 0;
 }
 
 .ai-page .drag-wall:hover {
-  border-color: var(--amber);
+  filter: drop-shadow(0 0 7px rgba(244, 195, 91, 0.58));
 }
 
 .board-stage {
@@ -1577,7 +1610,7 @@ details .button-row,
   }
 
   .ai-page .drag-wall {
-    min-height: 46px;
+    min-height: 0;
   }
 
   .ai-page .status-card {

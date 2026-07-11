@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Barricade 訓練器</title>
-    <link rel="stylesheet" href="/app.css?v=2026.07.11.04">
+    <link rel="stylesheet" href="/app.css?v=2026.07.12.01">
   </head>
   <body class="ai-page trainer-page">
     <main class="app ai-app trainer-app">
@@ -14,7 +14,7 @@
             <div class="brand-kicker">TACTICAL RACE LAB</div>
             <h1>Barricade 訓練器</h1>
             <div class="brand-meta">
-              <span class="app-version">2026.07.11.04</span>
+              <span class="app-version">2026.07.12.01</span>
               <a class="top-link" href="/ai.html">開啟 AI 對戰</a>
             </div>
           </div>
@@ -59,8 +59,10 @@
           <section class="board-rail wall-palette">
             <div class="rail-eyebrow">WALL TOOLKIT</div>
             <h2>拖曳放牆</h2>
-            <div class="drag-wall h-drag" draggable="true" data-wall="h">橫牆 h</div>
-            <div class="drag-wall v-drag" draggable="true" data-wall="v">直牆 v</div>
+            <div class="wall-tool-row" aria-label="可拖曳的牆">
+              <div class="drag-wall h-drag" draggable="true" data-wall="h" role="button" tabindex="0" aria-label="拖曳橫牆"><span>橫牆</span></div>
+              <div class="drag-wall v-drag" draggable="true" data-wall="v" role="button" tabindex="0" aria-label="拖曳直牆"><span>直牆</span></div>
+            </div>
             <p>拖到棋盤會先預覽，放開後再同步寫入棋譜。</p>
           </section>
 
@@ -156,6 +158,6 @@
         </details>
       </aside>
     </main>
-    <script src="/app.js?v=2026.07.11.04"></script>
+    <script src="/app.js?v=2026.07.12.01"></script>
   </body>
 </html>

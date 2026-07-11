@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.07.11.04
+## Current Status: 2026.07.12.01
 
 The production web/API backend still exposes a hybrid engine, but Hybrid now
 resolves to the stable alpha-beta policy by default. A 10-game Hybrid-vs-Expert
@@ -11,7 +11,11 @@ explicit model selection through
 `engine: "hybrid"`, `engine: "mcts"`, `engine: "alpha-beta"`, or
 `engine: "expert"`.
 
-Version `2026.07.11.04` enlarges the board on short desktop screens while
+Version `2026.07.12.01` keeps the trainer board visible even when analysis is
+slow or unavailable, reduces fast state-sync work after each move, and replaces
+the large wall cards with compact draggable wall pieces and board previews.
+Non-Expert requests now tolerate deployment cold starts without changing their
+configured search budget. Version `2026.07.11.04` enlarged the board while
 keeping the complete left workspace visible. Secondary dashboard content and
 header spacing compress at 760px height or below. Board walls are thinner,
 wall labels are smaller and offset farther from anchors, and pawns are slightly

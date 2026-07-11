@@ -17,7 +17,7 @@ from barricade_expert import BarricadeGgAiClient, expert_history_for_start_turn,
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
-APP_VERSION = "2026.07.11.04"
+APP_VERSION = "2026.07.12.01"
 DEFAULT_ENGINE = "hybrid"
 EXPERT_ENGINE = "expert"
 SUPPORTED_ENGINES = {"alpha-beta", "mcts", "hybrid", EXPERT_ENGINE}
@@ -152,13 +152,15 @@ def analysis_payload(
     score: float | None,
     searched_depth: int | None,
     avoid_actions: set[str] | None,
+    candidate_actions: list[str] | None = None,
 ) -> dict:
     perspective = state.turn
     opp = engine.opponent(perspective)
     state_score = engine.static_eval(state, perspective)
+    ranked = candidate_actions if candidate_actions is not None else engine.ordered_actions(state, limit_walls=18)
     candidates = [
         action_analysis(state, action, perspective)
-        for action in engine.ordered_actions(state, limit_walls=18)[:6]
+        for action in ranked[:6]
     ]
     avoided = sorted(avoid_actions or set())
     return {
@@ -249,7 +251,13 @@ def state_payload(
 ) -> dict:
     red_dist, red_path = engine.movement_path(state, "red")
     blue_dist, blue_path = engine.movement_path(state, "blue")
-    actions = engine.ordered_actions(state, limit_walls=18)
+    # Fast state sync only validates and redraws a move. Ranking every possible
+    # wall here used to add seconds before the real recommendation request.
+    actions = (
+        [engine.coord_to_text(pos) for pos in engine.legal_pawn_moves(state)]
+        if fast_state
+        else engine.ordered_actions(state, limit_walls=18)
+    )
     win = winner(state)
     red_score = engine.static_eval(state, "red")
     blue_score = engine.static_eval(state, "blue")
@@ -310,6 +318,7 @@ def state_payload(
             score,
             searched_depth,
             avoid_actions,
+            actions,
         ),
     }
 

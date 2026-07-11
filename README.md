@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.07.11.02
+## Current Status: 2026.07.11.03
 
 The production web/API backend still exposes a hybrid engine, but Hybrid now
 resolves to the stable alpha-beta policy by default. A 10-game Hybrid-vs-Expert
@@ -10,6 +10,13 @@ available as an explicit experimental model. The API and frontend support
 explicit model selection through
 `engine: "hybrid"`, `engine: "mcts"`, `engine: "alpha-beta"`, or
 `engine: "expert"`.
+
+Version `2026.07.11.03` keeps the complete AI board workspace visible inside
+the left desktop pane, including short 680px-high screens. The board now scales
+from the remaining height while the right controls retain their own scroll.
+The trainer page has been rebuilt with the same command-center design,
+responsive behavior, model/latency/sync indicators, and compact settings as the
+AI battle page. Trainer history blur no longer launches a hidden analysis.
 
 Version `2026.07.11.02` fixes the remaining intermittent Expert visual delay.
 Optimistic rendering now accepts every well-formed pawn or wall action instead

@@ -699,6 +699,17 @@ Verification:
 - Python unit tests, compile checks, frontend JS syntax checks, analysis CLI
   smoke, and local HTTP `/api/analyze` Expert cache smoke passed.
 
+## 2026.07.11.03 Unified Responsive Workspace Segment
+
+- The desktop board pane now fits its header, dashboard, board, rails, and
+  legend inside the viewport; the board scales down on short screens.
+- The right control panel remains independently scrollable.
+- Rebuilt the trainer page using the same visual system and responsive command
+  hierarchy as the AI battle page without changing its interaction IDs.
+- Added trainer model, response latency, and synchronization indicators.
+- Removed hidden trainer analysis on history-field blur.
+- Bumped app/cache version to `2026.07.11.03`.
+
 ## 2026.07.11.02 Expert Latency and UI/UX Segment
 
 - Fixed Expert wall actions missing optimistic rendering when they were legal

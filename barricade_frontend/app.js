@@ -22,6 +22,10 @@ const actionLabel = document.querySelector("#actionLabel");
 const boardAcceptBtn = document.querySelector("#boardAcceptBtn");
 const boardRecCode = document.querySelector("#boardRecCode");
 const boardRecHint = document.querySelector("#boardRecHint");
+const syncBadge = document.querySelector("#syncBadge");
+const activeModelLabel = document.querySelector("#activeModelLabel");
+const panelModelLabel = document.querySelector("#panelModelLabel");
+const latencyText = document.querySelector("#latencyText");
 
 let userSide = "red";
 let latest = null;
@@ -78,6 +82,21 @@ function sideName(side) {
   return side === "red" ? text.red : text.blue;
 }
 
+function engineLabel(engine) {
+  const labels = {
+    expert: "Barricade.gg Expert",
+    hybrid: "Hybrid · Alpha-Beta",
+    mcts: "MCTS",
+    "alpha-beta": "Alpha-Beta",
+  };
+  return labels[engine] || engine || "-";
+}
+
+function setSyncState(state, label) {
+  syncBadge.dataset.state = state;
+  syncBadge.textContent = label;
+}
+
 function coordToXY(coord) {
   return { x: files.indexOf(coord[0]), y: Number(coord[1]) - 1 };
 }
@@ -123,6 +142,7 @@ function wallLimitMessage(actions) {
 }
 
 async function fetchAnalysis(history) {
+  const requestStarted = performance.now();
   const controller = new AbortController();
   const timeoutMs = engineSelect.value === "expert"
     ? 40000
@@ -145,7 +165,9 @@ async function fetchAnalysis(history) {
   } finally {
     window.clearTimeout(timeoutId);
   }
-  return response.json();
+  const payload = await response.json();
+  if (payload?.state) payload.state.client_ms = Math.round((performance.now() - requestStarted) * 10) / 10;
+  return payload;
 }
 
 function analysisErrorMessage(error) {
@@ -165,6 +187,7 @@ function applyAnalysis(payload) {
 async function analyze(message = "") {
   const requestId = ++analyzeRequestId;
   statusText.textContent = text.loading;
+  setSyncState("busy", engineSelect.value === "expert" ? "Expert 思考中" : "分析中");
   try {
     const payload = await fetchAnalysis(historyEl.value);
     if (requestId !== analyzeRequestId) return;
@@ -173,10 +196,12 @@ async function analyze(message = "") {
       return;
     }
     applyAnalysis(payload);
+    setSyncState("ready", "已同步");
     if (message) statusText.textContent = message;
   } catch (error) {
     if (requestId !== analyzeRequestId) return;
     statusText.textContent = analysisErrorMessage(error);
+    setSyncState("error", "同步失敗");
   }
 }
 
@@ -191,6 +216,7 @@ async function tryCommit(actions, messagePrefix = "") {
   const candidateHistory = historyWithActions(actions);
   const requestId = ++analyzeRequestId;
   statusText.textContent = text.loading;
+  setSyncState("busy", engineSelect.value === "expert" ? "Expert 思考中" : "分析中");
   try {
     const payload = await fetchAnalysis(candidateHistory);
     if (requestId !== analyzeRequestId) return false;
@@ -203,11 +229,13 @@ async function tryCommit(actions, messagePrefix = "") {
     historyEl.value = candidateHistory;
     actionInput.value = "";
     applyAnalysis(payload);
+    setSyncState("ready", "已同步");
     if (messagePrefix) statusText.textContent = `${messagePrefix}${actions.join(" ")}`;
     return true;
   } catch (error) {
     if (requestId !== analyzeRequestId) return false;
     statusText.textContent = analysisErrorMessage(error);
+    setSyncState("error", "同步失敗");
     return false;
   }
 }
@@ -224,6 +252,14 @@ function render(state) {
     : `${text.turn}${sideName(state.turn)}`;
 
   recommendationEl.textContent = state.recommendation || "-";
+  const displayEngine = engineLabel(engineSelect.value);
+  activeModelLabel.textContent = displayEngine;
+  panelModelLabel.textContent = displayEngine;
+  const total = Number(state.client_ms);
+  const server = Number(state.server_ms);
+  latencyText.textContent = Number.isFinite(total)
+    ? `回應 ${Math.round(total)} ms`
+    : Number.isFinite(server) ? `後端 ${Math.round(server)} ms` : "局面已載入";
   scoreText.textContent = state.recommendation
     ? `分數 ${Number(state.score).toFixed(1)}｜深度 ${state.searched_depth}`
     : text.waiting;
@@ -462,7 +498,7 @@ function undoLastMove() {
 
 sideRed.addEventListener("click", () => setSide("red"));
 sideBlue.addEventListener("click", () => setSide("blue"));
-analyzeBtn.addEventListener("click", analyze);
+analyzeBtn.addEventListener("click", () => analyze());
 resetBtn.addEventListener("click", () => {
   historyEl.value = "";
   actionInput.value = "";
@@ -578,7 +614,11 @@ boardEl.addEventListener("drop", (event) => {
   if (wall) commitBoardAction(wall, text.dragWallSaved);
 });
 
-historyEl.addEventListener("blur", analyze);
+historyEl.addEventListener("blur", () => {
+  if (normalizedHistoryText() !== latestHistoryText) {
+    statusText.textContent = "棋譜已修改，按「重新分析」後套用新局面。";
+  }
+});
 historyEl.addEventListener("input", () => {
   latestHistoryText = "";
   editingOwnMove = false;

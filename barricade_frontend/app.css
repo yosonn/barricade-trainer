@@ -1429,3 +1429,163 @@ details .button-row,
     display: grid;
   }
 }
+
+/* Keep the complete board workspace visible on desktop-height screens. */
+@media (min-width: 1241px) {
+  .ai-page {
+    overflow: hidden;
+  }
+
+  .ai-page .ai-app {
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  .ai-page .board-area {
+    height: calc(100dvh - 32px);
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .ai-page .command-header {
+    min-height: 66px;
+    padding-bottom: 11px;
+  }
+
+  .ai-page .match-dashboard {
+    margin-top: 10px;
+  }
+
+  .ai-page .player-card,
+  .ai-page .decision-card {
+    min-height: 108px;
+  }
+
+  .ai-page .player-card {
+    padding-block: 11px;
+  }
+
+  .ai-page .player-card strong {
+    font-size: clamp(32px, 3.2vw, 43px);
+  }
+
+  .ai-page .board-shell {
+    height: 100%;
+    min-height: 0;
+    margin-top: 10px;
+    align-items: center;
+  }
+
+  .ai-page .board-stage {
+    height: 100%;
+    min-height: 0;
+    align-content: center;
+  }
+
+  .ai-page .board-frame {
+    width: min(100%, calc(100dvh - 330px), 660px);
+    height: auto;
+    max-width: 100%;
+    aspect-ratio: 1 / 1;
+  }
+
+  .ai-page .board {
+    width: 100%;
+    height: 100%;
+  }
+
+  .ai-page .board-rail {
+    min-height: 0;
+    height: min(88%, 340px);
+  }
+}
+
+@media (min-width: 1241px) and (max-height: 760px) {
+  .ai-page .ai-app {
+    gap: 12px;
+    padding: 10px;
+  }
+
+  .ai-page .board-area {
+    height: calc(100dvh - 20px);
+    padding: 13px;
+  }
+
+  .ai-page .control-panel {
+    top: 8px;
+    max-height: calc(100dvh - 16px);
+    padding: 9px;
+    gap: 8px;
+  }
+
+  .ai-page .command-header {
+    min-height: 58px;
+    padding-bottom: 8px;
+  }
+
+  .ai-page h1 {
+    font-size: 25px;
+  }
+
+  .ai-page .brand-kicker {
+    font-size: 9px;
+  }
+
+  .ai-page .match-dashboard {
+    margin-top: 8px;
+  }
+
+  .ai-page .player-card,
+  .ai-page .decision-card {
+    min-height: 94px;
+  }
+
+  .ai-page .player-card strong {
+    font-size: 34px;
+  }
+
+  .ai-page .decision-card > strong {
+    font-size: 42px;
+  }
+
+  .ai-page .board-shell {
+    margin-top: 7px;
+  }
+
+  .ai-page .board-rail {
+    height: min(92%, 300px);
+    padding: 11px;
+  }
+
+  .ai-page .drag-wall {
+    min-height: 46px;
+  }
+
+  .ai-page .status-card {
+    min-height: 58px;
+    padding-block: 8px;
+  }
+
+  .ai-page .box,
+  .ai-page .settings-drawer {
+    padding: 11px;
+  }
+}
+
+.trainer-page .flow-copy {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.trainer-page .recommendation-rail .rail-code {
+  border-color: rgba(244, 195, 91, 0.38);
+  border-radius: 11px;
+  background: rgba(4, 11, 14, 0.7);
+}
+
+.trainer-page .help-drawer .code-grid {
+  margin-top: 13px;
+}

@@ -17,7 +17,7 @@ from barricade_expert import BarricadeGgAiClient, expert_history_for_start_turn,
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
-APP_VERSION = "2026.07.11.02"
+APP_VERSION = "2026.07.11.03"
 DEFAULT_ENGINE = "hybrid"
 EXPERT_ENGINE = "expert"
 SUPPORTED_ENGINES = {"alpha-beta", "mcts", "hybrid", EXPERT_ENGINE}

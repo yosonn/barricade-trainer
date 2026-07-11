@@ -4,124 +4,158 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Barricade 訓練器</title>
-    <link rel="stylesheet" href="/app.css?v=2026.07.11.02">
+    <link rel="stylesheet" href="/app.css?v=2026.07.11.03">
   </head>
-  <body>
-    <main class="app">
+  <body class="ai-page trainer-page">
+    <main class="app ai-app trainer-app">
       <section class="board-area">
-        <header class="top">
-          <div>
+        <header class="top command-header">
+          <div class="brand-block">
+            <div class="brand-kicker">TACTICAL RACE LAB</div>
             <h1>Barricade 訓練器</h1>
-            <small class="app-version">版本 2026.07.11.02</small>
-            <p>離線練習 / 復盤分析</p>
-            <p><a class="top-link" href="/ai.html">開啟獨立 AI 對戰介面</a></p>
+            <div class="brand-meta">
+              <span class="app-version">2026.07.11.03</span>
+              <a class="top-link" href="/ai.html">開啟 AI 對戰</a>
+            </div>
           </div>
-          <div class="side-picker" role="group" aria-label="選擇陣營">
-            <button class="seg active" id="sideRed" type="button">我先手：紅方</button>
-            <button class="seg" id="sideBlue" type="button">我後手：藍方</button>
+          <div class="side-picker ai-mode-picker trainer-side-picker" role="group" aria-label="選擇我的方位">
+            <button class="seg active" id="sideRed" type="button">我先手 · 紅方</button>
+            <button class="seg" id="sideBlue" type="button">我後手 · 藍方</button>
           </div>
         </header>
 
-        <div class="stats">
-          <div class="stat red-card">
-            <span>紅方</span>
+        <div class="match-dashboard" aria-label="即時訓練狀態">
+          <article class="stat player-card red-card">
+            <div class="player-label"><span class="side-dot"></span>紅方</div>
             <strong id="redPos">e1</strong>
             <b id="redDist">8 步到終點</b>
             <small id="redInfo">剩餘牆 10</small>
-          </div>
-          <div class="stat rec-card">
-            <span id="turnText">輪到紅方</span>
+          </article>
+
+          <article class="decision-card">
+            <div class="decision-topline">
+              <span id="turnText">輪到紅方</span>
+              <span class="sync-badge" id="syncBadge" data-state="busy">分析中</span>
+            </div>
+            <div class="move-caption">推薦走法</div>
             <strong id="recommendation">-</strong>
+            <div class="decision-meta">
+              <span id="activeModelLabel">Hybrid · Alpha-Beta</span>
+              <span id="latencyText">等待局面</span>
+            </div>
             <small id="scoreText">等待分析</small>
-            <small id="winRateText">勝率估計：-</small>
-          </div>
-          <div class="stat blue-card">
-            <span>藍方</span>
+            <small id="winRateText">勝率估計 · -</small>
+          </article>
+
+          <article class="stat player-card blue-card">
+            <div class="player-label">藍方<span class="side-dot"></span></div>
             <strong id="bluePos">e9</strong>
             <b id="blueDist">8 步到終點</b>
             <small id="blueInfo">剩餘牆 10</small>
-          </div>
+          </article>
         </div>
 
-        <div class="board-shell">
-          <div class="board-rail">
+        <div class="board-shell trainer-board-shell">
+          <section class="board-rail wall-palette">
+            <div class="rail-eyebrow">WALL TOOLKIT</div>
             <h2>拖曳放牆</h2>
             <div class="drag-wall h-drag" draggable="true" data-wall="h">橫牆 h</div>
             <div class="drag-wall v-drag" draggable="true" data-wall="v">直牆 v</div>
-            <p>拖到棋盤上會顯示預覽，放開後會同步寫入右側棋譜。</p>
+            <p>拖到棋盤會先預覽，放開後再同步寫入棋譜。</p>
+          </section>
+
+          <div class="board-stage">
+            <div class="board-frame">
+              <div class="board" id="board" aria-label="棋盤"></div>
+            </div>
+            <div class="board-legend">
+              <span><i class="legend-dot red"></i>紅方往上</span>
+              <span><i class="legend-dot blue"></i>藍方往下</span>
+              <span><i class="legend-line"></i>推薦預覽</span>
+            </div>
           </div>
-          <div class="board" id="board" aria-label="棋盤"></div>
-          <div class="board-rail">
+
+          <section class="board-rail recommendation-rail">
+            <div class="rail-eyebrow">RECOMMENDATION</div>
             <h2>推薦操作</h2>
-            <p id="boardRecHint">輪到你時，這裡會顯示推薦走法。</p>
+            <p id="boardRecHint">分析完成後，推薦走法會直接顯示在棋盤上。</p>
             <strong class="rail-code" id="boardRecCode">-</strong>
             <button class="primary rail-primary" id="boardAcceptBtn" type="button">採用推薦</button>
-            <p>棋盤上會用淺色圖案預覽推薦位置；點格子仍可記錄實際走法。</p>
-          </div>
+            <p>若實戰走法不同，可在右側輸入實際走法繼續分析。</p>
+          </section>
         </div>
       </section>
 
-      <aside class="panel">
-        <div class="status" id="statusText">載入中...</div>
+      <aside class="panel control-panel trainer-control-panel">
+        <section class="status-card" aria-live="polite">
+          <span class="status-pulse"></span>
+          <div>
+            <small>即時狀態</small>
+            <div class="status" id="statusText">正在讀取局面...</div>
+          </div>
+        </section>
 
-        <section class="box">
-          <h2>操作</h2>
-          <p id="flowHint">先採用推薦，接著輸入對手走法。</p>
-          <label class="field">
+        <section class="box action-box">
+          <div class="section-heading">
+            <div>
+              <span class="section-kicker">TRAINING FLOW</span>
+              <h2>本回合操作</h2>
+            </div>
+            <span class="model-pill" id="panelModelLabel">Hybrid · Alpha-Beta</span>
+          </div>
+          <p class="flow-copy" id="flowHint">先採用推薦，再輸入對手走法。</p>
+          <label class="field action-field">
             <span id="actionLabel">走法代碼</span>
-            <input id="actionInput" autocomplete="off" placeholder="e8 / hd5 / ve4">
+            <input id="actionInput" autocomplete="off" inputmode="text" placeholder="例如 e8、hd5、ve4">
           </label>
-          <button class="primary" id="nextBtn" type="button">採用推薦</button>
-          <button id="editMineBtn" type="button">我不是走推薦</button>
+          <button class="primary command-button" id="nextBtn" type="button">採用推薦</button>
+          <button class="command-button" id="editMineBtn" type="button">我不是走推薦</button>
           <button id="undoBtn" type="button">上一步</button>
         </section>
 
-        <details open>
-          <summary>棋譜與設定</summary>
-          <label class="field">
-            <span>整段棋譜</span>
-            <textarea id="history" spellcheck="false" placeholder="1. e2 e8 2. e3 e7 3. hd5"></textarea>
-          </label>
-          <div class="button-row">
-            <button id="analyzeBtn" type="button">重新分析</button>
-            <button id="resetBtn" type="button">重開</button>
-          </div>
-          <div class="settings-help">
-            <p><b>搜尋秒數</b>：每次推薦可以思考多久。越高通常越強，但會越慢。</p>
-            <p><b>最大深度</b>：往後預判幾層半手。越高通常越強，但會越慢。</p>
-          </div>
-          <div class="settings">
+        <details class="settings-drawer">
+          <summary>
+            <span><b>棋譜與模型設定</b><small>完整棋譜、搜尋參數、模型選擇</small></span>
+          </summary>
+          <div class="settings-content">
             <label class="field">
-              <span>搜尋秒數</span>
-              <input id="timeLimit" type="number" min="0.05" max="3" step="0.05" value="0.5">
+              <span>整段棋譜</span>
+              <textarea id="history" spellcheck="false" placeholder="貼上或修正棋譜，例如 1. e2 e8 2. e3 e7 3. hd5"></textarea>
             </label>
-            <label class="field">
-              <span>最大深度</span>
-              <input id="depthLimit" type="number" min="1" max="5" step="1" value="3">
+            <div class="button-row">
+              <button id="analyzeBtn" type="button">重新分析</button>
+              <button id="resetBtn" type="button">重開</button>
+            </div>
+            <div class="settings-help">
+              <p><b>搜尋秒數</b>控制本地 AI 思考時間；越高通常越強但越慢。</p>
+              <p><b>最大深度</b>控制本地模型往後預判的層數。</p>
+            </div>
+            <div class="settings">
+              <label class="field"><span>搜尋秒數</span><input id="timeLimit" type="number" min="0.05" max="3" step="0.05" value="0.5"></label>
+              <label class="field"><span>最大深度</span><input id="depthLimit" type="number" min="1" max="5" step="1" value="3"></label>
+            </div>
+            <label class="field model-field">
+              <span>目前模型</span>
+              <select id="engineSelect">
+                <option value="hybrid" selected>Hybrid</option>
+                <option value="mcts">MCTS</option>
+                <option value="alpha-beta">Alpha-Beta</option>
+                <option value="expert">Barricade.gg Expert</option>
+              </select>
             </label>
           </div>
-          <label class="field">
-            <span>模型</span>
-            <select id="engineSelect">
-              <option value="hybrid" selected>Hybrid</option>
-              <option value="mcts">MCTS</option>
-              <option value="alpha-beta">Alpha-Beta</option>
-              <option value="expert">Barricade.gg Expert</option>
-            </select>
-          </label>
         </details>
 
-        <section class="box help-box">
-          <h2>代碼怎麼寫</h2>
-          <div class="code-grid">
-            <div><b>棋子</b><span>走到哪格就填哪格，例如 <code>e2</code></span></div>
-            <div><b>橫牆</b><span><code>h</code> + 左端錨點，例如 <code>hd5</code></span></div>
-            <div><b>直牆</b><span><code>v</code> + 下端錨點，例如 <code>ve4</code></span></div>
+        <details class="settings-drawer help-drawer">
+          <summary><span><b>走法代碼說明</b><small>棋子、橫牆、直牆格式</small></span></summary>
+          <div class="settings-content code-grid">
+            <div><b>棋子</b><span>移動到指定格，例如 <code>e2</code></span></div>
+            <div><b>橫牆</b><span><code>h</code> + 座標，例如 <code>hd5</code></span></div>
+            <div><b>直牆</b><span><code>v</code> + 座標，例如 <code>ve4</code></span></div>
           </div>
-          <p class="tiny">牆的錨點範圍是 a1 到 h8。棋盤上已放的牆會顯示代碼。</p>
-        </section>
+        </details>
       </aside>
     </main>
-    <script src="/app.js?v=2026.07.11.02"></script>
+    <script src="/app.js?v=2026.07.11.03"></script>
   </body>
 </html>

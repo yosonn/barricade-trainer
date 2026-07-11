@@ -33,6 +33,10 @@ const redEngineSelect = document.querySelector("#redEngineSelect");
 const blueTimeLimit = document.querySelector("#blueTimeLimit");
 const blueDepthLimit = document.querySelector("#blueDepthLimit");
 const blueEngineSelect = document.querySelector("#blueEngineSelect");
+const syncBadge = document.querySelector("#syncBadge");
+const activeModelLabel = document.querySelector("#activeModelLabel");
+const panelModelLabel = document.querySelector("#panelModelLabel");
+const latencyText = document.querySelector("#latencyText");
 
 let mode = "human";
 let humanSide = "red";
@@ -136,6 +140,22 @@ function activeSearchParams(history) {
   return searchParamsForSide(sideToMoveForHistory(history));
 }
 
+function engineLabel(engine) {
+  const labels = {
+    expert: "Barricade.gg Expert",
+    hybrid: "Hybrid · Alpha-Beta",
+    mcts: "MCTS",
+    "alpha-beta": "Alpha-Beta",
+  };
+  return labels[engine] || engine || "-";
+}
+
+function setSyncState(state, label) {
+  if (!syncBadge) return;
+  syncBadge.dataset.state = state;
+  syncBadge.textContent = label;
+}
+
 function shouldRecommendForHistory(history) {
   if (mode === "auto") return true;
   if (!hasHumanPlayer()) return true;
@@ -183,6 +203,7 @@ function syncSidesForMode() {
 }
 
 async function fetchAnalysis(history, options = {}) {
+  const requestStarted = performance.now();
   const shouldRecommend = options.recommendForTurn ?? shouldRecommendForHistory(history);
   const suppressRecommend = options.suppressRecommend ?? !shouldRecommend;
   const params = shouldRecommend ? activeSearchParams(history) : { time: 0.05, depth: 1, engine: engineSelect.value };
@@ -212,12 +233,17 @@ async function fetchAnalysis(history, options = {}) {
   } finally {
     window.clearTimeout(timeoutId);
   }
-  return response.json();
+  const payload = await response.json();
+  if (payload?.state) payload.state.client_ms = Math.round((performance.now() - requestStarted) * 10) / 10;
+  return payload;
 }
 
 function optimisticStateForAction(state, action) {
   const normalized = action.trim().toLowerCase();
-  if (!state?.legal_actions?.includes(normalized)) return null;
+  if (!state) return null;
+  const isPawnShape = /^[a-i][1-9]$/.test(normalized);
+  const isWallShape = isWallCode(normalized) && state[state.turn].walls > 0;
+  if (!state.legal_actions?.includes(normalized) && !isPawnShape && !isWallShape) return null;
 
   const next = JSON.parse(JSON.stringify(state));
   const side = state.turn;
@@ -251,6 +277,7 @@ async function analyze(message = "") {
   replayIndex = null;
   lastComputerAction = null;
   statusText.textContent = t.loading;
+  setSyncState("busy", "分析中");
   try {
     const payload = await fetchAnalysis(historyEl.value);
     if (requestId !== analyzeRequestId) return;
@@ -261,10 +288,12 @@ async function analyze(message = "") {
     latest = payload.state;
     latestHistoryText = normalizedHistoryText();
     render(latest);
+    setSyncState("ready", "已同步");
     if (message) statusText.textContent = message;
   } catch (error) {
     if (requestId !== analyzeRequestId) return;
     statusText.textContent = analysisErrorMessage(error);
+    setSyncState("error", "同步失敗");
     stopAuto();
   }
 }
@@ -294,6 +323,7 @@ async function tryCommit(actions, message = "", options = {}) {
     lastComputerAction = options.computerAction || null;
     if (options.computerAction) lastComputerMoveCode = options.computerAction.action;
     render(latest);
+    setSyncState("busy", "同步局面");
     if (message) statusText.textContent = message;
     await new Promise((resolve) => requestAnimationFrame(resolve));
   }
@@ -311,6 +341,7 @@ async function tryCommit(actions, message = "", options = {}) {
         render(latest);
       }
       statusText.textContent = `${t.invalid}${quickPayload.error}`;
+      setSyncState("error", "走法已回復");
       actionInput.focus();
       return false;
     }
@@ -325,6 +356,7 @@ async function tryCommit(actions, message = "", options = {}) {
 
     if (!latest.winner && shouldRecommendForHistory(candidateHistory)) {
       statusText.textContent = `${sideName(nextThinkSide)}思考中...`;
+      setSyncState("busy", activeSearchParams(candidateHistory).engine === "expert" ? "Expert 思考中" : "AI 思考中");
       const recommendationPayload = await fetchAnalysis(candidateHistory, { recommendForTurn: true });
       if (requestId !== analyzeRequestId) return false;
       if (!recommendationPayload.ok) {
@@ -336,6 +368,7 @@ async function tryCommit(actions, message = "", options = {}) {
       render(latest);
       if (message) statusText.textContent = message;
     }
+    setSyncState("ready", "已同步");
     return true;
   } catch (error) {
     if (requestId !== analyzeRequestId) return false;
@@ -348,6 +381,7 @@ async function tryCommit(actions, message = "", options = {}) {
       render(latest);
     }
     statusText.textContent = analysisErrorMessage(error);
+    setSyncState("error", "同步失敗");
     stopAuto();
     return false;
   }
@@ -366,8 +400,20 @@ function render(state) {
   const humanTurn = hasHumanPlayer() && state.turn === humanSide && !state.winner && replayIndex === null;
   const displayAction = state.recommendation || (humanTurn && lastComputerMoveCode ? lastComputerMoveCode : "");
   recommendationEl.textContent = displayAction || "-";
+  const configuredEngine = searchParamsForSide(state.turn).engine;
+  const displayEngine = engineLabel(configuredEngine);
+  if (activeModelLabel) activeModelLabel.textContent = displayEngine;
+  if (panelModelLabel) panelModelLabel.textContent = displayEngine;
+  if (latencyText) {
+    const total = Number(state.client_ms);
+    const server = Number(state.server_ms);
+    latencyText.textContent = Number.isFinite(total)
+      ? `回應 ${Math.round(total)} ms`
+      : Number.isFinite(server) ? `後端 ${Math.round(server)} ms` : "局面已載入";
+  }
   if (state.recommendation) {
-    scoreText.textContent = `分數 ${Number(state.score).toFixed(1)}｜深度 ${state.searched_depth}｜模型 ${state.resolved_engine || state.engine || "-"}`;
+    const score = Number.isFinite(Number(state.score)) ? Number(state.score).toFixed(1) : "-";
+    scoreText.textContent = `${state.resolved_engine || state.engine || displayEngine} · 評分 ${score}`;
   } else if (humanTurn && lastComputerMoveCode) {
     scoreText.textContent = "電腦上一手，請照此移動後輸入你的走法";
   } else {
@@ -697,7 +743,7 @@ mainBtn.addEventListener("click", submitHumanMove);
 aiStepBtn.addEventListener("click", aiStep);
 autoBtn.addEventListener("click", toggleAuto);
 undoBtn.addEventListener("click", undoLastMove);
-analyzeBtn.addEventListener("click", analyze);
+analyzeBtn.addEventListener("click", () => analyze());
 resetBtn.addEventListener("click", () => {
   stopAuto();
   stopReplay();
@@ -828,7 +874,11 @@ boardEl.addEventListener("drop", (event) => {
     analyze("\u5df2\u66f4\u65b0\u641c\u5c0b\u8a2d\u5b9a\u3002");
   });
 });
-historyEl.addEventListener("blur", analyze);
+historyEl.addEventListener("blur", () => {
+  if (normalizedHistoryText() !== latestHistoryText) {
+    statusText.textContent = "棋譜已修改，按「重新分析」後套用新局面。";
+  }
+});
 historyEl.addEventListener("input", () => {
   stopAuto();
   lastComputerAction = null;

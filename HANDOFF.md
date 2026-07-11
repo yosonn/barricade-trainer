@@ -699,6 +699,18 @@ Verification:
 - Python unit tests, compile checks, frontend JS syntax checks, analysis CLI
   smoke, and local HTTP `/api/analyze` Expert cache smoke passed.
 
+## 2026.07.11.02 Expert Latency and UI/UX Segment
+
+- Fixed Expert wall actions missing optimistic rendering when they were legal
+  but absent from the local top-ranked `legal_actions` subset.
+- Removed automatic full analysis on history textarea blur and fixed event
+  objects leaking into the visible status message.
+- Added response timing, model identity, and synchronization state to the main
+  decision dashboard.
+- Rebuilt the AI page as a responsive command-center layout; the board no
+  longer uses viewport-height compression that could overlap the status cards.
+- Bumped app/cache version to `2026.07.11.02`.
+
 ## 2026.07.11.01 Expert Visual Latency Segment
 
 - Player and computer actions now use a locally validated optimistic render,

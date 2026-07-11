@@ -699,6 +699,16 @@ Verification:
 - Python unit tests, compile checks, frontend JS syntax checks, analysis CLI
   smoke, and local HTTP `/api/analyze` Expert cache smoke passed.
 
+## 2026.07.11.01 Expert Visual Latency Segment
+
+- Player and computer actions now use a locally validated optimistic render,
+  so the board updates before the follow-up state synchronization request.
+- The client yields one animation frame before network synchronization, keeping
+  the visual move responsive even when Render or Expert is slow.
+- Fast synchronization requests omit the unused analysis candidate block.
+- API state responses now include `server_ms` for latency measurement.
+- Bumped app/cache version to `2026.07.11.01`.
+
 ## 2026.07.01.01 Expert Persistent Session Speed Segment
 
 Changes:

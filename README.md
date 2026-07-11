@@ -1,6 +1,6 @@
 # Barricade Trainer
 
-## Current Status: 2026.07.01.01
+## Current Status: 2026.07.11.01
 
 The production web/API backend still exposes a hybrid engine, but Hybrid now
 resolves to the stable alpha-beta policy by default. A 10-game Hybrid-vs-Expert
@@ -10,6 +10,12 @@ available as an explicit experimental model. The API and frontend support
 explicit model selection through
 `engine: "hybrid"`, `engine: "mcts"`, `engine: "alpha-beta"`, or
 `engine: "expert"`.
+
+Version `2026.07.11.01` removes an avoidable visual delay from Expert play.
+Legal player and computer actions are now painted on the board immediately,
+before the follow-up server synchronization and next Expert request. The
+validation request uses a fast state response that omits the unused candidate
+analysis block, and API responses expose `server_ms` for latency auditing.
 
 New backtest options:
 

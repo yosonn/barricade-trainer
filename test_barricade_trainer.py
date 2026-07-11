@@ -332,6 +332,21 @@ class BarricadeTrainerTests(unittest.TestCase):
         self.assertIsNone(payload["recommendation"])
         client_cls.assert_not_called()
 
+    def test_fast_state_omits_candidate_analysis_but_keeps_legal_actions(self):
+        state = b.state_from_history("e2 e8")
+        payload = web.state_payload(
+            state,
+            "red",
+            0.05,
+            1,
+            engine_kind="expert",
+            suppress_recommend=True,
+            fast_state=True,
+        )
+        self.assertIsNone(payload["analysis"])
+        self.assertIn("e3", payload["legal_actions"])
+        self.assertIsNone(payload["recommendation"])
+
     def test_hybrid_resolves_to_alpha_beta_in_late_goal_threat(self):
         history = (
             "e2 e8 e3 e7 e4 e6 he2 hd4 f4 e5 f5 g5 hg4 he5 "

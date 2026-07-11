@@ -4,6 +4,7 @@ import json
 import argparse
 import os
 import threading
+import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote
@@ -16,7 +17,7 @@ from barricade_expert import BarricadeGgAiClient, expert_history_for_start_turn,
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND = ROOT / "barricade_frontend"
-APP_VERSION = "2026.07.01.01"
+APP_VERSION = "2026.07.11.01"
 DEFAULT_ENGINE = "hybrid"
 EXPERT_ENGINE = "expert"
 SUPPORTED_ENGINES = {"alpha-beta", "mcts", "hybrid", EXPERT_ENGINE}
@@ -244,6 +245,7 @@ def state_payload(
     mcts_seed: int = 0,
     history_tokens: list[str] | None = None,
     suppress_recommend: bool = False,
+    fast_state: bool = False,
 ) -> dict:
     red_dist, red_path = engine.movement_path(state, "red")
     blue_dist, blue_path = engine.movement_path(state, "blue")
@@ -298,7 +300,7 @@ def state_payload(
         "blue_win_rate": win_rate_from_score(blue_score),
         "red_verdict": verdict(red_score, win, "red"),
         "blue_verdict": verdict(blue_score, win, "blue"),
-        "analysis": analysis_payload(
+        "analysis": None if fast_state else analysis_payload(
             state,
             search_time,
             depth,
@@ -392,6 +394,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_error(404)
             return
         try:
+            request_started = time.perf_counter()
             payload = self.read_json()
             history = str(payload.get("history", ""))
             user_side = str(payload.get("user_side", "red"))
@@ -407,25 +410,29 @@ class Handler(SimpleHTTPRequestHandler):
                 raise ValueError("engine must be alpha-beta, mcts, hybrid, or expert")
             recommend_for_turn = bool(payload.get("recommend_for_turn", False))
             suppress_recommend = bool(payload.get("suppress_recommend", False))
+            fast_state = bool(payload.get("fast_state", False))
             history_tokens = engine.tokenize_history(history)
             state = engine.state_from_history(history, start_turn=start_turn)
             avoid_actions = root_avoid_actions(history, start_turn)
             mcts_seed = len(history_tokens)
+            response_state = state_payload(
+                state,
+                user_side,
+                search_time,
+                depth,
+                engine_kind,
+                recommend_for_turn,
+                start_turn,
+                avoid_actions,
+                mcts_seed,
+                history_tokens,
+                suppress_recommend,
+                fast_state,
+            )
+            response_state["server_ms"] = round((time.perf_counter() - request_started) * 1000, 1)
             self.write_json({
                 "ok": True,
-                "state": state_payload(
-                    state,
-                    user_side,
-                    search_time,
-                    depth,
-                    engine_kind,
-                    recommend_for_turn,
-                    start_turn,
-                    avoid_actions,
-                    mcts_seed,
-                    history_tokens,
-                    suppress_recommend,
-                ),
+                "state": response_state,
             })
         except Exception as exc:
             self.write_json({"ok": False, "error": str(exc)}, status=400)

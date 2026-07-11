@@ -205,6 +205,7 @@ async function fetchAnalysis(history, options = {}) {
         time: params.time,
         depth: params.depth,
         engine: params.engine,
+        fast_state: Boolean(options.fastState),
       }),
       signal: controller.signal,
     });
@@ -212,6 +213,29 @@ async function fetchAnalysis(history, options = {}) {
     window.clearTimeout(timeoutId);
   }
   return response.json();
+}
+
+function optimisticStateForAction(state, action) {
+  const normalized = action.trim().toLowerCase();
+  if (!state?.legal_actions?.includes(normalized)) return null;
+
+  const next = JSON.parse(JSON.stringify(state));
+  const side = state.turn;
+  if (isWallCode(normalized)) {
+    next.walls = [...next.walls, normalized];
+    next[side].walls = Math.max(0, next[side].walls - 1);
+  } else {
+    next[side].pos = normalized;
+    if ((side === "red" && normalized.endsWith("9")) || (side === "blue" && normalized.endsWith("1"))) {
+      next.winner = side;
+    }
+  }
+  next.turn = other(side);
+  next.user_to_move = next.turn === humanSide;
+  next.recommendation = null;
+  next.searched_depth = null;
+  next.legal_actions = [];
+  return next;
 }
 
 function analysisErrorMessage(error) {
@@ -256,11 +280,36 @@ async function tryCommit(actions, message = "", options = {}) {
   const candidateHistory = historyWithActions(actions);
   const nextThinkSide = sideToMoveForHistory(candidateHistory);
   const requestId = ++analyzeRequestId;
+  const previousState = latest;
+  const previousHistory = historyEl.value;
+  const previousComputerAction = lastComputerAction;
+  const previousComputerMoveCode = lastComputerMoveCode;
+  const optimisticState = actions.length === 1 ? optimisticStateForAction(latest, actions[0]) : null;
+
+  if (optimisticState) {
+    historyEl.value = candidateHistory;
+    actionInput.value = "";
+    latest = optimisticState;
+    latestHistoryText = normalizedHistoryText();
+    lastComputerAction = options.computerAction || null;
+    if (options.computerAction) lastComputerMoveCode = options.computerAction.action;
+    render(latest);
+    if (message) statusText.textContent = message;
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  }
   statusText.textContent = "正在更新棋盤...";
   try {
-    const quickPayload = await fetchAnalysis(candidateHistory, { recommendForTurn: false });
+    const quickPayload = await fetchAnalysis(candidateHistory, { recommendForTurn: false, fastState: true });
     if (requestId !== analyzeRequestId) return false;
     if (!quickPayload.ok) {
+      if (optimisticState) {
+        historyEl.value = previousHistory;
+        latest = previousState;
+        latestHistoryText = normalizedHistoryText();
+        lastComputerAction = previousComputerAction;
+        lastComputerMoveCode = previousComputerMoveCode;
+        render(latest);
+      }
       statusText.textContent = `${t.invalid}${quickPayload.error}`;
       actionInput.focus();
       return false;
@@ -290,6 +339,14 @@ async function tryCommit(actions, message = "", options = {}) {
     return true;
   } catch (error) {
     if (requestId !== analyzeRequestId) return false;
+    if (optimisticState) {
+      historyEl.value = previousHistory;
+      latest = previousState;
+      latestHistoryText = normalizedHistoryText();
+      lastComputerAction = previousComputerAction;
+      lastComputerMoveCode = previousComputerMoveCode;
+      render(latest);
+    }
     statusText.textContent = analysisErrorMessage(error);
     stopAuto();
     return false;

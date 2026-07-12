@@ -824,6 +824,31 @@ details .button-row,
   font-size: 12px;
 }
 
+.page-switcher {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.page-switcher a {
+  min-width: 52px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+}
+
+.page-switcher a.active {
+  background: rgba(45, 212, 173, 0.16);
+  color: #d9fff5;
+}
+
 .ai-page .ai-mode-picker {
   flex-wrap: nowrap;
   padding: 4px;
@@ -1663,19 +1688,20 @@ details .button-row,
     width: 100%;
     height: 100dvh;
     min-height: 0;
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: auto 1fr;
+    align-content: start;
     gap: 4px;
     padding: 4px;
     overflow: hidden;
   }
 
   .ai-page .board-area {
-    height: 100%;
+    height: auto;
     min-height: 0;
     display: grid;
     grid-template-rows: auto auto minmax(0, 1fr);
     padding: 5px;
-    overflow: hidden;
+    overflow: visible;
     border-radius: 12px;
   }
 
@@ -1704,12 +1730,25 @@ details .button-row,
   }
 
   .ai-page .brand-meta {
+    gap: 5px;
     margin: 0;
   }
 
   .ai-page .app-version {
     padding: 2px 5px;
     font-size: 8px;
+  }
+
+  .page-switcher {
+    gap: 1px;
+    padding: 2px;
+  }
+
+  .page-switcher a {
+    min-width: 50px;
+    min-height: 26px;
+    padding: 4px 5px;
+    font-size: 9px;
   }
 
   .ai-page .ai-mode-picker {
@@ -1822,25 +1861,25 @@ details .button-row,
   }
 
   .ai-page .board-shell {
-    height: 100%;
-    min-height: 0;
+    height: auto;
+    min-height: auto;
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) 48px;
+    grid-template-rows: auto 44px;
     gap: 3px;
     margin-top: 4px;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .ai-page .board-stage {
     order: 1;
-    height: 100%;
-    min-height: 0;
-    align-content: center;
+    height: auto;
+    min-height: auto;
+    align-content: start;
     gap: 2px;
   }
 
   .ai-page .board-frame {
-    width: min(100%, calc(100dvh - 320px));
+    width: min(94%, calc(100dvh - 385px), 500px);
     max-width: 100%;
     padding: 3px;
     border-radius: 11px;
@@ -1875,7 +1914,7 @@ details .button-row,
   .ai-page .wall-palette {
     order: 2;
     min-height: 0;
-    height: 48px;
+    height: 44px;
     display: grid;
     grid-template-columns: 1fr;
     padding: 2px 8px;
@@ -1889,20 +1928,20 @@ details .button-row,
   }
 
   .wall-tool-row {
-    min-height: 42px;
+    min-height: 38px;
     margin: 0;
     gap: clamp(58px, 22vw, 90px);
     justify-content: center;
   }
 
   .h-drag::before {
-    width: 72px;
-    height: 10px;
+    width: 60px;
+    height: 8px;
   }
 
   .v-drag::before {
-    width: 10px;
-    height: 38px;
+    width: 8px;
+    height: 32px;
   }
 
   .drag-wall span {
@@ -1910,11 +1949,26 @@ details .button-row,
   }
 
   .h-drag span {
-    top: calc(50% + 10px);
+    top: calc(50% + 8px);
   }
 
   .v-drag span {
-    left: calc(50% + 10px);
+    left: calc(50% + 8px);
+  }
+
+  .ai-page .wall.h {
+    height: 8px;
+  }
+
+  .ai-page .wall.v {
+    width: 8px;
+  }
+
+  .ai-page .wall-label {
+    min-width: 20px;
+    padding: 1px 3px;
+    border-radius: 3px;
+    font-size: 8px;
   }
 
   .turn-guide,

@@ -548,14 +548,14 @@ function drawWall(code, preview = false, extraClass = "") {
     wall.style.width = `${(2 / 9) * 100}%`;
     label.style.left = `${((x + 1) / 9) * 100}%`;
     label.style.top = `${((8 - y) / 9) * 100}%`;
-    label.style.transform = "translate(-50%, -205%)";
+    label.style.transform = y >= 6 ? "translate(-50%, 22%)" : "translate(-50%, -205%)";
   } else {
     wall.style.left = `${((x + 1) / 9) * 100}%`;
     wall.style.top = `${((8 - (y + 1)) / 9) * 100}%`;
     wall.style.height = `${(2 / 9) * 100}%`;
     label.style.left = `${((x + 1) / 9) * 100}%`;
     label.style.top = `${((8 - y) / 9) * 100}%`;
-    label.style.transform = "translate(32%, -50%)";
+    label.style.transform = x >= 6 ? "translate(-132%, -50%)" : "translate(32%, -50%)";
   }
   boardEl.appendChild(wall);
   boardEl.appendChild(label);
